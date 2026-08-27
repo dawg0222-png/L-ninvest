@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Saferoad Lön</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Saferoad Lön">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1115">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23f5a623'/%3E%3Ctext x='50' y='62' font-size='46' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' fill='%230f1115' font-weight='700'%3EkrE%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#0f1115;
+  --bg2:#161922;
+  --card:#1c202b;
+  --card2:#232838;
+  --border:#2c3140;
+  --text:#eef0f4;
+  --text-dim:#9aa1b3;
+  --accent:#f5a623;
+  --accent-dim:#3a2f1a;
+  --good:#4cc38a;
+  --warn:#ef6a6a;
+  --blue:#5b8cff;
+  --radius:14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{
+  margin:0; padding:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  overscroll-behavior-y:none;
+  -webkit-user-select:none; user-select:none;
+}
+input,textarea{-webkit-user-select:text; user-select:text;}
+body{ padding-bottom: calc(84px + var(--safe-bottom)); }
+h1,h2,h3,p{margin:0;}
+button{font-family:inherit;}
+
+.topbar{
+  position:sticky; top:0; z-index:20;
+  padding: calc(14px + var(--safe-top)) 16px 12px;
+  background:rgba(15,17,21,0.92); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.topbar h1{font-size:19px; font-weight:700; letter-spacing:-0.2px;}
+.topbar .sub{font-size:12.5px; color:var(--text-dim); margin-top:2px;}
+
+.months-row{
+  display:flex; gap:8px; overflow-x:auto; padding: 12px 16px 4px;
+  scrollbar-width:none;
+}
+.months-row::-webkit-scrollbar{display:none;}
+.month-pill{
+  flex:0 0 auto; padding:8px 14px; border-radius:999px; font-size:14px; font-weight:600;
+  background:var(--card); color:var(--text-dim); border:1px solid var(--border); white-space:nowrap;
+}
+.month-pill.active{ background:var(--accent); color:#171208; border-color:var(--accent); }
+.month-pill.add{ background:transparent; border:1px dashed var(--border); color:var(--text-dim); }
+
+.container{ padding:14px 16px 8px; max-width:640px; margin:0 auto; }
+
+.summary-card{
+  background:linear-gradient(155deg,var(--card2),var(--card));
+  border:1px solid var(--border); border-radius:var(--radius);
+  padding:16px; margin-bottom:16px;
+}
+.summary-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+.summary-top .label{ font-size:12.5px; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:0.4px;}
+.summary-top .value{ font-size:30px; font-weight:800; margin-top:4px; letter-spacing:-0.5px;}
+.summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+.summary-mini{ background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+.summary-mini .l{ font-size:11.5px; color:var(--text-dim); }
+.summary-mini .v{ font-size:16px; font-weight:700; margin-top:2px; }
+.breakdown{ margin-top:14px; border-top:1px solid var(--border); padding-top:12px; }
+.breakdown-row{ display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--text-dim); }
+.breakdown-row b{ color:var(--text); font-weight:600; }
+
+.day-list{ display:flex; flex-direction:column; gap:8px; }
+.day-card{
+  background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden;
+}
+.day-card.weekend{ border-left:3px solid var(--blue); }
+.day-card.has-data{ border-left:3px solid var(--accent); }
+.day-head{
+  display:flex; align-items:center; justify-content:space-between; padding:12px 14px; cursor:pointer;
+}
+.day-head .left{ display:flex; align-items:center; gap:10px; }
+.day-date{ font-weight:700; font-size:15px; min-width:64px; }
+.day-dow{ font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.3px; }
+.day-flags{ display:flex; gap:4px; }
+.flag-dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
+.day-summary{ text-align:right; font-size:13px; }
+.day-summary .hrs{ font-weight:700; color:var(--text); }
+.day-summary .rate{ color:var(--good); font-weight:700; font-size:13.5px; }
+.day-summary .empty{ color:var(--text-dim); }
+.chevron{ margin-left:8px; color:var(--text-dim); transition:transform .18s; font-size:13px; }
+.day-card.open .chevron{ transform:rotate(90deg); }
+
+.day-body{ display:none; padding:0 14px 14px; border-top:1px solid var(--border); }
+.day-card.open .day-body{ display:block; }
+
+.field-row{ display:flex; gap:10px; margin-top:12px; }
+.field{ flex:1; }
+.field label{ display:block; font-size:11.5px; color:var(--text-dim); margin-bottom:5px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; }
+input[type=time], input[type=number], input[type=text], input[type=month]{
+  width:100%; background:var(--card2); border:1px solid var(--border); border-radius:9px;
+  padding:10px 10px; color:var(--text); font-size:16px; font-family:inherit;
+}
+input::placeholder{ color:#5a6072; }
+.toggle-row{ display:flex; gap:10px; margin-top:12px; }
+.toggle{
+  flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+  padding:10px; border-radius:9px; background:var(--card2); border:1px solid var(--border);
+  font-size:13.5px; font-weight:600; color:var(--text-dim);
+}
+.toggle.on{ background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+.toggle input{ display:none; }
+.notes-row{ margin-top:12px; }
+.day-compute{
+  margin-top:14px; padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:9px;
+  display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; font-size:12.5px; color:var(--text-dim);
+}
+.day-compute b{ color:var(--text); }
+.clear-day{
+  margin-top:12px; width:100%; padding:9px; border-radius:9px; border:1px solid var(--border);
+  background:transparent; color:var(--warn); font-size:13px; font-weight:600;
+}
+
+.section-title{ font-size:13px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.4px; margin: 18px 4px 8px; }
+
+.rates-note{
+  font-size:11.5px; color:var(--text-dim); line-height:1.5; background:var(--card);
+  border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-top:16px;
+}
+.rates-note b{ color:var(--text); }
+
+.bottom-actions{
+  position:fixed; left:0; right:0; bottom:0; z-index:20;
+  padding: 10px 16px calc(12px + var(--safe-bottom));
+  background:rgba(15,17,21,0.92); backdrop-filter:blur(14px); border-top:1px solid var(--border);
+  display:flex; gap:10px; max-width:640px; margin:0 auto;
+}
+.btn{
+  flex:1; padding:13px; border-radius:11px; border:none; font-size:14.5px; font-weight:700; text-align:center;
+}
+.btn-primary{ background:var(--accent); color:#171208; }
+.btn-secondary{ background:var(--card2); color:var(--text); border:1px solid var(--border); }
+
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:50; display:none;
+  align-items:flex-end; justify-content:center;
+}
+.modal-backdrop.show{ display:flex; }
+.modal{
+  background:var(--bg2); width:100%; max-width:640px; border-radius:18px 18px 0 0;
+  padding:18px 18px calc(18px + var(--safe-bottom)); border-top:1px solid var(--border);
+  max-height:82vh; overflow-y:auto;
+}
+.modal h3{ font-size:16px; margin-bottom:12px; }
+.modal .field{ margin-bottom:12px; }
+.modal-actions{ display:flex; gap:10px; margin-top:8px; }
+textarea.data-io{
+  width:100%; min-height:120px; background:var(--card2); border:1px solid var(--border); border-radius:9px;
+  color:var(--text); font-size:12px; padding:10px; font-family:ui-monospace,Menlo,monospace;
+}
+.small-link{ color:var(--blue); font-size:13px; font-weight:600; margin-top:4px; display:inline-block; }
+.empty-state{ text-align:center; padding:40px 20px; color:var(--text-dim); }
+.empty-state b{ display:block; color:var(--text); font-size:16px; margin-bottom:6px; }
+
+/* ---------- Tab switcher ---------- */
+.tabbar{ display:flex; gap:4px; padding:4px; margin:10px 16px 0; max-width:640px; margin-left:auto; margin-right:auto;
+  background:var(--card2); border:1px solid var(--border); border-radius:12px; }
+.tabbar button{ flex:1; padding:9px 0; border:none; background:transparent; color:var(--text-dim);
+  font-size:13.5px; font-weight:700; border-radius:9px; font-family:inherit; }
+.tabbar button.active{ background:var(--accent); color:#171208; }
+
+/* ---------- Calculator-style keypad (used inside a modal) ---------- */
+.calc-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:4px; }
+.calc-key{ background:var(--card2); border:1px solid var(--border); color:var(--text);
+  font-size:21px; font-family:ui-monospace,Menlo,monospace; border-radius:11px; padding:15px 0; font-weight:600; }
+.calc-key:active{ background:var(--accent-dim); }
+.calc-key.fn{ color:var(--text-dim); font-size:17px; }
+.calc-display{ font-family:ui-monospace,Menlo,monospace; font-size:34px; font-weight:700; text-align:center;
+  padding:12px 0 16px; color:var(--accent); border-bottom:1px solid var(--border); margin-bottom:14px; }
+input.calc-trigger{ cursor:pointer; caret-color:transparent; }
+input.calc-trigger:active{ background:var(--accent-dim) !important; }
+
+/* ---------- Investments tab ---------- */
+.invest-card{ background:linear-gradient(155deg,var(--card2),var(--card)); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+.invest-row{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; font-size:13px; color:var(--text-dim); }
+.invest-row:last-child{ margin-bottom:0; }
+.invest-row b{ color:var(--text); font-size:14px; }
+.invest-hero{ margin-bottom:12px; }
+.invest-hero .l{ font-size:12.5px; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:0.4px; }
+.invest-hero .v{ font-size:28px; font-weight:800; margin-top:4px; color:var(--good); }
+.invest-hero .v.neg{ color:var(--warn); }
+.cat-card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+.cat-head{ display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+.cat-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.cat-name{ font-size:15px; font-weight:700; flex:1; }
+.cat-pct{ font-size:12px; font-weight:800; padding:3px 8px; border-radius:6px; font-family:ui-monospace,Menlo,monospace; }
+.progress-track{ height:7px; background:var(--border); border-radius:4px; overflow:hidden; margin-bottom:12px; }
+.progress-fill{ height:100%; border-radius:4px; }
+.cat-fields{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.cat-fields .field label{ font-size:9.5px; }
+.cat-fields .field input, .cat-fields .cat-current{
+  background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:8px;
+  font-size:13.5px; font-family:ui-monospace,Menlo,monospace; width:100%; color:var(--text); }
+.cat-current{ color:var(--text-dim); display:flex; align-items:center; }
+.cat-fields.single{ grid-template-columns:1fr; }
+.cat-total{ color:var(--good); font-weight:700; display:flex; align-items:center; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Saferoad Lön</h1>
+  <div class="sub" id="topSub">Offline salary &amp; timesheet</div>
+</div>
+
+<div class="months-row" id="monthsRow"></div>
+
+<div class="tabbar">
+  <button id="tabBtnLon">Lön</button>
+  <button id="tabBtnInvest">Investments</button>
+  <button id="tabBtnPortfolio">Portfolio</button>
+  <button id="tabBtnGraph">Graph</button>
+</div>
+
+<div class="container" id="mainContainer"></div>
+
+<div class="bottom-actions">
+  <button class="btn btn-secondary" id="dataBtn">Data</button>
+  <button class="btn btn-secondary" id="deleteMonthBtn">Delete month</button>
+  <button class="btn btn-primary" id="addMonthBtn">+ New month</button>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+/* ============================================================
+   Saferoad Lön — offline salary timesheet
+   Replicates the "LÖN SAFEROAD" Excel workbook logic exactly:
+   base/evening/night rate windows, weekday overtime, weekend/
+   holiday rates, sparbevakare addition, and the Skatt tax table.
+   ============================================================ */
+
+/* ---------- Constants (from the workbook) ---------- */
+const RATE_BASE = 201.12;      // Mon-Fri 06:00-17:30
+const RATE_EVENING = 252.73;   // = base + 51.61 (Mon-Thu 17:30-22:00, Fri 17:30-19:00)
+const RATE_NIGHT = 313.25;     // = base + 112.13 (Mon-Thu 22:00-05:00)
+const RATE_WEEKDAY_OT = 291;   // after 8h, Mon 06:00 - Fri 19:00
+const RATE_WEEKEND = 379;      // weekend/holiday
+const RATE_WEEKEND_OT = 402;   // weekend/holiday overtime (after 8h)
+const RATE_SPARBEVAKARE = 10;  // per hour worked, on top
+const RATE_KM = 2.5;           // tax-free car mileage allowance, per km
+
+// [minSalaryOfBracket, tax] sorted ascending — approximate-match lookup
+const TAX_TABLE = [[1, 0.0], [2001, 150.0], [2101, 152.0], [2201, 162.0], [2301, 173.0], [2401, 183.0], [2501, 194.0], [2601, 204.0], [2701, 215.0], [2801, 217.0], [2901, 227.0], [3001, 238.0], [3101, 248.0], [3201, 259.0], [3301, 269.0], [3401, 272.0], [3501, 282.0], [3601, 293.0], [3701, 303.0], [3801, 314.0], [3901, 324.0], [4001, 326.0], [4101, 337.0], [4201, 347.0], [4301, 358.0], [4401, 368.0], [4501, 379.0], [4601, 381.0], [4701, 391.0], [4801, 402.0], [4901, 412.0], [5001, 422.0], [5101, 432.0], [5201, 442.0], [5301, 444.0], [5401, 454.0], [5501, 464.0], [5601, 474.0], [5701, 484.0], [5801, 494.0], [5901, 496.0], [6001, 506.0], [6101, 516.0], [6201, 526.0], [6301, 536.0], [6401, 546.0], [6501, 548.0], [6601, 558.0], [6701, 568.0], [6801, 578.0], [6901, 588.0], [7001, 598.0], [7101, 619.0], [7201, 639.0], [7301, 660.0], [7401, 681.0], [7501, 701.0], [7601, 722.0], [7701, 743.0], [7801, 763.0], [7901, 784.0], [8001, 804.0], [8101, 825.0], [8201, 846.0], [8301, 866.0], [8401, 887.0], [8501, 908.0], [8601, 928.0], [8701, 949.0], [8801, 970.0], [8901, 990.0], [9001, 1011.0], [9101, 1032.0], [9201, 1052.0], [9301, 1073.0], [9401, 1093.0], [9501, 1114.0], [9601, 1135.0], [9701, 1155.0], [9801, 1176.0], [9901, 1196.0], [10001, 1217.0], [10101, 1238.0], [10201, 1258.0], [10301, 1279.0], [10401, 1300.0], [10501, 1320.0], [10601, 1341.0], [10701, 1362.0], [10801, 1382.0], [10901, 1403.0], [11001, 1423.0], [11101, 1444.0], [11201, 1465.0], [11301, 1485.0], [11401, 1506.0], [11501, 1527.0], [11601, 1547.0], [11701, 1568.0], [11801, 1589.0], [11901, 1609.0], [12001, 1630.0], [12101, 1650.0], [12201, 1671.0], [12301, 1692.0], [12401, 1712.0], [12501, 1733.0], [12601, 1754.0], [12701, 1774.0], [12801, 1795.0], [12901, 1815.0], [13001, 1836.0], [13101, 1857.0], [13201, 1877.0], [13301, 1898.0], [13401, 1919.0], [13501, 1940.0], [13601, 1960.0], [13701, 1980.0], [13801, 2000.0], [13901, 2020.0], [14001, 2040.0], [14101, 2060.0], [14201, 2080.0], [14301, 2100.0], [14401, 2120.0], [14501, 2140.0], [14601, 2159.0], [14701, 2179.0], [14801, 2199.0], [14901, 2219.0], [15001, 2239.0], [15101, 2259.0], [15201, 2279.0], [15301, 2299.0], [15401, 2319.0], [15501, 2339.0], [15601, 2359.0], [15701, 2379.0], [15801, 2399.0], [15901, 2419.0], [16001, 2443.0], [16101, 2467.0], [16201, 2492.0], [16301, 2516.0], [16401, 2540.0], [16501, 2565.0], [16601, 2589.0], [16701, 2613.0], [16801, 2637.0], [16901, 2662.0], [17001, 2686.0], [17101, 2710.0], [17201, 2735.0], [17301, 2759.0], [17401, 2783.0], [17501, 2808.0], [17601, 2832.0], [17701, 2856.0], [17801, 2880.0], [17901, 2905.0], [18001, 2929.0], [18101, 2953.0], [18201, 2978.0], [18301, 3002.0], [18401, 3026.0], [18501, 3051.0], [18601, 3075.0], [18701, 3099.0], [18801, 3123.0], [18901, 3148.0], [19001, 3172.0], [19101, 3196.0], [19201, 3221.0], [19301, 3245.0], [19401, 3269.0], [19501, 3294.0], [19601, 3318.0], [19701, 3342.0], [19801, 3366.0], [19901, 3391.0], [20001, 3439.0], [20201, 3488.0], [20401, 3537.0], [20601, 3585.0], [20801, 3634.0], [21001, 3682.0], [21201, 3731.0], [21401, 3780.0], [21601, 3828.0], [21801, 3877.0], [22001, 3925.0], [22201, 3974.0], [22401, 4023.0], [22601, 4071.0], [22801, 4120.0], [23001, 4170.0], [23201, 4220.0], [23401, 4270.0], [23601, 4320.0], [23801, 4371.0], [24001, 4421.0], [24201, 4471.0], [24401, 4521.0], [24601, 4572.0], [24801, 4622.0], [25001, 4672.0], [25201, 4722.0], [25401, 4773.0], [25601, 4823.0], [25801, 4873.0], [26001, 4923.0], [26201, 4974.0], [26401, 5024.0], [26601, 5074.0], [26801, 5124.0], [27001, 5175.0], [27201, 5225.0], [27401, 5275.0], [27601, 5325.0], [27801, 5376.0], [28001, 5426.0], [28201, 5476.0], [28401, 5526.0], [28601, 5577.0], [28801, 5627.0], [29001, 5677.0], [29201, 5727.0], [29401, 5778.0], [29601, 5828.0], [29801, 5878.0], [30001, 5928.0], [30201, 5979.0], [30401, 6029.0], [30601, 6079.0], [30801, 6129.0], [31001, 6180.0], [31201, 6230.0], [31401, 6280.0], [31601, 6330.0], [31801, 6381.0], [32001, 6431.0], [32201, 6481.0], [32401, 6531.0], [32601, 6582.0], [32801, 6632.0], [33001, 6682.0], [33201, 6732.0], [33401, 6783.0], [33601, 6833.0], [33801, 6883.0], [34001, 6933.0], [34201, 6984.0], [34401, 7034.0], [34601, 7084.0], [34801, 7134.0], [35001, 7185.0], [35201, 7235.0], [35401, 7285.0], [35601, 7335.0], [35801, 7386.0], [36001, 7436.0], [36201, 7486.0], [36401, 7536.0], [36601, 7587.0], [36801, 7637.0], [37001, 7687.0], [37201, 7737.0], [37401, 7788.0], [37601, 7838.0], [37801, 7888.0], [38001, 7938.0], [38201, 7989.0], [38401, 8039.0], [38601, 8089.0], [38801, 8139.0], [39001, 8189.0], [39201, 8239.0], [39401, 8289.0], [39601, 8339.0], [39801, 8402.0], [40001, 8468.0], [40201, 8534.0], [40401, 8600.0], [40601, 8666.0], [40801, 8732.0], [41001, 8798.0], [41201, 8864.0], [41401, 8930.0], [41601, 8996.0], [41801, 9062.0], [42001, 9128.0], [42201, 9194.0], [42401, 9260.0], [42601, 9326.0], [42801, 9392.0], [43001, 9458.0], [43201, 9524.0], [43401, 9590.0], [43601, 9656.0], [43801, 9722.0], [44001, 9788.0], [44201, 9854.0], [44401, 9920.0], [44601, 9986.0], [44801, 10052.0], [45001, 10118.0], [45201, 10184.0], [45401, 10250.0], [45601, 10316.0], [45801, 10382.0], [46001, 10448.0], [46201, 10514.0], [46401, 10580.0], [46601, 10646.0], [46801, 10712.0], [47001, 10778.0], [47201, 10844.0], [47401, 10910.0], [47601, 10976.0], [47801, 11042.0], [48001, 11108.0], [48201, 11174.0], [48401, 11240.0], [48601, 11306.0], [48801, 11372.0], [49001, 11438.0], [49201, 11504.0], [49401, 11570.0], [49601, 11636.0], [49801, 11702.0], [50001, 11768.0], [50201, 11834.0], [50401, 11900.0], [50601, 11966.0], [50801, 12032.0], [51001, 12098.0], [51201, 12164.0], [51401, 12230.0], [51601, 12296.0], [51801, 12362.0], [52001, 12428.0], [52201, 12494.0], [52401, 12560.0], [52601, 12626.0], [52801, 12692.0], [53001, 12758.0], [53201, 12824.0], [53401, 12890.0], [53601, 12956.0], [53801, 13022.0], [54001, 13088.0], [54201, 13154.0], [54401, 13220.0], [54601, 13286.0], [54801, 13352.0], [55001, 13451.0], [55201, 13557.0], [55401, 13663.0], [55601, 13769.0], [55801, 13875.0], [56001, 13981.0], [56201, 14087.0], [56401, 14193.0], [56601, 14299.0], [56801, 14405.0], [57001, 14511.0], [57201, 14617.0], [57401, 14723.0], [57601, 14829.0], [57801, 14935.0], [58001, 15041.0], [58201, 15147.0], [58401, 15253.0], [58601, 15359.0], [58801, 15465.0], [59001, 15571.0], [59201, 15677.0], [59401, 15783.0], [59601, 15889.0], [59801, 15995.0], [60001, 16101.0], [60201, 16207.0], [60401, 16313.0], [60601, 16419.0], [60801, 16525.0], [61001, 16631.0], [61201, 16737.0], [61401, 16843.0], [61601, 16949.0], [61801, 17055.0], [62001, 17161.0], [62201, 17267.0], [62401, 17373.0], [62601, 17479.0], [62801, 17585.0], [63001, 17691.0], [63201, 17797.0], [63401, 17903.0], [63601, 18009.0], [63801, 18115.0], [64001, 18221.0], [64201, 18327.0], [64401, 18433.0], [64601, 18539.0], [64801, 18645.0], [65001, 18751.0], [65201, 18857.0], [65401, 18963.0], [65601, 19069.0], [65801, 19175.0], [66001, 19281.0], [66201, 19387.0], [66401, 19493.0], [66601, 19599.0], [66801, 19705.0], [67001, 19811.0], [67201, 19917.0], [67401, 20023.0], [67601, 20129.0], [67801, 20235.0], [68001, 20341.0], [68201, 20447.0], [68401, 20553.0], [68601, 20659.0], [68801, 20765.0], [69001, 20871.0], [69201, 20977.0], [69401, 21083.0], [69601, 21189.0], [69801, 21295.0], [70001, 21401.0]];
+
+function lookupTax(totalEarned) {
+  if (!(totalEarned > 0)) return 0;
+  // rightmost bracket whose lower bound <= totalEarned
+  let lo = 0, hi = TAX_TABLE.length - 1, ans = 0;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (TAX_TABLE[mid][0] <= totalEarned) { ans = TAX_TABLE[mid][1]; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  return ans;
+}
+
+/* ---------- Time helpers ----------
+   Times are stored as "HH:MM" strings. We compute everything in
+   minutes, with dayOffset*1440 as the date component, exactly
+   mirroring the spreadsheet's datetime arithmetic. */
+function hhmmToMin(s) {
+  if (!s) return null;
+  const [h, m] = s.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+/* weekday#: Mon=1 ... Sun=7 (ISO), matching Excel WEEKDAY(date,2) */
+function isoWeekday(dateObj) {
+  const d = dateObj.getDay(); // 0=Sun..6=Sat
+  return d === 0 ? 7 : d;
+}
+
+/* ---------- Core per-day calculation ----------
+   entry: { dateStr:'YYYY-MM-DD', start, stop, lunchStart, lunchDur,
+            sparbevakare:bool, holiday:bool, notes:'' }
+   Returns an object with every intermediate figure (mirrors the
+   workbook's helper columns) plus the final totals. */
+function overlapMin(aStart, aEnd, bStart, bEnd) {
+  return Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
+}
+
+function computeDay(entry, dayOffset) {
+  const date = new Date(entry.dateStr + 'T00:00:00');
+  const O = isoWeekday(date); // 1..7
+
+  const base = dayOffset * 1440;
+  const C = hhmmToMin(entry.start);
+  const D = hhmmToMin(entry.stop);
+  const N = (entry.start && entry.stop) ? true : false;
+
+  if (!N) {
+    return {
+      hasData: false, weekday: O, isWeekendOrHoliday: false,
+      hoursWorked: 0, overtimeHours: 0, dayRate: 0,
+      baseHrs: 0, eveningHrs: 0, nightHrs: 0,
+      weekdayOtHrs: 0, weekendHrs: 0, weekendOtHrs: 0,
+      sparbevakareAdd: 0, km: entry.km ? Number(entry.km) : 0,
+      carAllowance: (entry.km ? Number(entry.km) : 0) * RATE_KM
+    };
+  }
+
+  const P = base + C;
+  const Q = base + D + (D <= C ? 1440 : 0);
+
+  const hasLunch = entry.lunchStart && entry.lunchDur;
+  const E = hhmmToMin(entry.lunchStart);
+  const F = entry.lunchDur ? Number(entry.lunchDur) : null;
+
+  const R = hasLunch ? (base + E) : Q;
+  const S = hasLunch ? (R + F) : Q;
+
+  const T = (R - P) / 60;   // pre-lunch hrs
+  const U = (Q - S) / 60;   // post-lunch hrs
+  const V = T + U;          // total worked hrs
+
+  const isHoliday = !!entry.holiday;
+  const isNaturalWeekend =
+    (O === 5 && C >= 19 * 60) ||
+    O === 6 || O === 7 ||
+    (O === 1 && C < 5 * 60);
+  const W = isNaturalWeekend || isHoliday;
+
+  const X = Math.min(V, 8);          // regular hrs (<=8, whole shift)
+  const Y = Math.max(V - 8, 0);      // overtime hrs (whole shift)
+
+  // Z = clock-time (abs minutes) where the shift's cumulative 8 regular
+  // hours run out and overtime begins — same for every branch below.
+  let Z;
+  if (T >= 8) Z = P + 8 * 60;
+  else if (V >= 8) Z = S + (8 - T) * 60;
+  else Z = Q;
+
+  const AA = Math.min(R, Z);                  // end of "regular" within seg1 (pre-lunch)
+  const AB = Math.max(S, Math.min(Z, Q));      // end of "regular" within seg2 (post-lunch)
+
+  let AN = 0, AK = 0, AL = 0, AO = 0, AP = 0, AQ = 0;
+
+  if (isNaturalWeekend) {
+    // Weekend/holiday rate (379/402) applies only from the shift's start
+    // up to Monday 05:00 (WE below). Anything past that point falls back
+    // to ordinary weekday rules — including the 05:00-06:00 "evening"
+    // exception — for whichever hours spill past the boundary.
+    const daysUntilMonday = { 5: 3, 6: 2, 7: 1, 1: 0 }[O];
+    const WE = base + daysUntilMonday * 1440 + 5 * 60;
+
+    const weekendRegHrs = (overlapMin(P, AA, P, WE) + overlapMin(S, AB, P, WE)) / 60;
+    const weekendOtHrs = (overlapMin(AA, R, AA, WE) + overlapMin(AB, Q, AB, WE)) / 60;
+    const postRegHrs = X - weekendRegHrs;
+    const postOtHrs = Y - weekendOtHrs;
+
+    AP = weekendRegHrs;
+    AQ = weekendOtHrs;
+    AO = postOtHrs;
+
+    if (postRegHrs > 0) {
+      // Monday-relative windows, anchored off WE (= Monday 05:00)
+      const monEarlyStart = WE, monEarlyEnd = WE + 60;
+      const monBaseStart = WE + 60, monBaseEnd = WE + 12.5 * 60;
+      const monEveningStart = monBaseEnd, monEveningEnd = WE + 17 * 60;
+      const monNightStart = monEveningEnd, monNightEnd = WE + 24 * 60 + 5 * 60;
+
+      const postSeg1Start = Math.max(P, WE), postSeg1End = Math.max(AA, WE);
+      const postSeg2Start = Math.max(S, WE), postSeg2End = Math.max(AB, WE);
+
+      const mBase = (overlapMin(postSeg1Start, postSeg1End, monBaseStart, monBaseEnd) +
+                     overlapMin(postSeg2Start, postSeg2End, monBaseStart, monBaseEnd)) / 60;
+      const mEarly = (overlapMin(postSeg1Start, postSeg1End, monEarlyStart, monEarlyEnd) +
+                      overlapMin(postSeg2Start, postSeg2End, monEarlyStart, monEarlyEnd)) / 60;
+      const mEvening = (overlapMin(postSeg1Start, postSeg1End, monEveningStart, monEveningEnd) +
+                        overlapMin(postSeg2Start, postSeg2End, monEveningStart, monEveningEnd)) / 60;
+      const mNight = (overlapMin(postSeg1Start, postSeg1End, monNightStart, monNightEnd) +
+                      overlapMin(postSeg2Start, postSeg2End, monNightStart, monNightEnd)) / 60;
+      const mGap = Math.max(0, postRegHrs - (mBase + mEarly + mEvening + mNight));
+
+      AN = mBase + mGap;
+      AK = mEarly + mEvening;
+      AL = mNight;
+    }
+  } else if (isHoliday) {
+    // Whole flagged day stays at the weekend/holiday rate, uncapped.
+    AP = X;
+    AQ = Y;
+  } else {
+    // Ordinary weekday shift.
+    const AC = base + 6 * 60;
+    const AD = base + 17.5 * 60;
+    const AE = base + (O === 5 ? 19 * 60 : 22 * 60);
+    const AF = base + 22 * 60;
+    const AG = base + 1440 + 5 * 60;
+    const earlyStart = base + 5 * 60, earlyEnd = base + 6 * 60; // 05:00-06:00 -> evening rate
+
+    const AH = O <= 5 ? 1 : 0;
+    const AI = O <= 4 ? 1 : 0;
+
+    const AJ = AH * ((overlapMin(P, AA, AC, AD) + overlapMin(S, AB, AC, AD)) / 60);
+    const AKmain = AH * ((overlapMin(P, AA, AD, AE) + overlapMin(S, AB, AD, AE)) / 60);
+    const AKearly = AH * ((overlapMin(P, AA, earlyStart, earlyEnd) + overlapMin(S, AB, earlyStart, earlyEnd)) / 60);
+    AL = AI * ((overlapMin(P, AA, AF, AG) + overlapMin(S, AB, AF, AG)) / 60);
+
+    const AM = Math.max(0, X - (AJ + AKmain + AKearly + AL));
+    AN = AJ + AM;
+    AK = AKmain + AKearly;
+    AO = Y;
+  }
+
+  const AR = AN * RATE_BASE + AK * RATE_EVENING + AL * RATE_NIGHT + AO * RATE_WEEKDAY_OT;
+  const AS = AP * RATE_WEEKEND + AQ * RATE_WEEKEND_OT;
+
+  const AT = entry.sparbevakare ? 1 : 0;
+  const AU = AT * V * RATE_SPARBEVAKARE;
+  const AV = AR + AS + AU;
+
+  // Tax-free car mileage allowance — independent of worked hours/rates
+  const km = entry.km ? Number(entry.km) : 0;
+  const carAllowance = km * RATE_KM;
+
+  return {
+    hasData: true, weekday: O, isWeekendOrHoliday: W,
+    hoursWorked: V,
+    overtimeHours: Y,
+    dayRate: AV,
+    baseHrs: AN, eveningHrs: AK, nightHrs: AL,
+    weekdayOtHrs: AO, weekendHrs: AP, weekendOtHrs: AQ,
+    sparbevakareAdd: AU,
+    km, carAllowance
+  };
+}
+
+/* ---------- Month utilities ---------- */
+function daysInMonth(year, month) { return new Date(year, month, 0).getDate(); } // month:1-12
+const DOW_ABBR = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function monthKey(year, month) { return `${year}-${String(month).padStart(2,'0')}`; }
+
+function buildEmptyMonth(year, month) {
+  const n = daysInMonth(year, month);
+  const days = [];
+  for (let d = 1; d <= n; d++) {
+    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    days.push({ dateStr, start:'', stop:'', lunchStart:'', lunchDur:'', sparbevakare:false, holiday:false, km:'', notes:'' });
+  }
+  return { year, month, days };
+}
+
+/* ---------- Storage ---------- */
+const STORAGE_KEY = 'saferoad_lon_v1';
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { months: {}, activeMonth: null };
+}
+function saveData() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+let state = loadData();
+if (!state.investments) state.investments = { targets: {}, monthly: {} };
+if (!state.portfolio) state.portfolio = { values: {}, monthlyValues: {}, stocks: '', apartmentSale: { value: '', toIndex: '', toCash: '' } };
+if (!state.portfolio.apartmentSale) state.portfolio.apartmentSale = { value: '', toIndex: '', toCash: '' };
+if (!state.portfolio.monthlyValues) state.portfolio.monthlyValues = {};
+if (!state.portfolio.stockHoldings) state.portfolio.stockHoldings = [];
+if (state.portfolio.finnhubKey == null) state.portfolio.finnhubKey = '';
+if (!state.portfolio.stocksCache) state.portfolio.stocksCache = { date: '', fx: null, prices: {} };
+if (!state.activeTab) state.activeTab = 'lon';
+let openDayIndex = null;
+
+const CATEGORIES = [
+  { key: 'lysa', name: 'LYSA', color: 'var(--blue)' },
+  { key: 'avanzaGlobal', name: 'Avanza Global Index', color: 'var(--good)' },
+  { key: 'sparkonto', name: 'Sparkonto', color: 'var(--accent)' },
+  { key: 'resa', name: 'Resa', color: '#3fa7a0' },
+  { key: 'buffert', name: 'Buffert', color: 'var(--warn)' },
+];
+
+// These categories get a fresh, manually-entered Value each month
+// (the actual account balance at the start of that month) instead of one
+// fixed value shared across every month.
+const PORTFOLIO_MONTHLY_KEYS = ['lysa', 'avanzaGlobal', 'sparkonto', 'stocks'];
+
+/* Make sure a month has a Value entry for the monthly-tracked categories,
+   carrying forward the closest earlier month's values as a starting point
+   so there's something sensible to adjust rather than starting blank. */
+function ensurePortfolioMonthValues(key) {
+  if (!state.portfolio.monthlyValues) state.portfolio.monthlyValues = {};
+  if (state.portfolio.monthlyValues[key]) return;
+  const priorKeys = Object.keys(state.portfolio.monthlyValues).filter(k => k < key).sort();
+  const priorKey = priorKeys[priorKeys.length - 1];
+  const prior = priorKey ? state.portfolio.monthlyValues[priorKey] : {};
+  const carried = {};
+  PORTFOLIO_MONTHLY_KEYS.forEach(k => {
+    carried[k] = (prior && prior[k] != null) ? prior[k] : (k === 'stocks' && state.portfolio.stocks != null ? state.portfolio.stocks : '');
+  });
+  state.portfolio.monthlyValues[key] = carried;
+}
+
+/* Resolve the Value shown/edited for a category in a given month: the
+   monthly-tracked categories (including Stocks) read/write per-month
+   storage, the rest keep the single shared value they always had. */
+function portfolioValueFor(catKey, key) {
+  if (PORTFOLIO_MONTHLY_KEYS.includes(catKey)) {
+    const mv = state.portfolio.monthlyValues[key];
+    return mv && mv[catKey] != null ? mv[catKey] : '';
+  }
+  return state.portfolio.values[catKey] != null ? state.portfolio.values[catKey] : '';
+}
+
+// Asset-class grouping for the Portfolio summary: Sparkonto/Resa/Buffert
+// are cash; LYSA/Avanza Global (+ the manual Stocks entry) are stocks/index funds.
+const CASH_KEYS = ['sparkonto', 'buffert'];
+const STOCK_KEYS = ['lysa', 'avanzaGlobal'];
+
+/* ---------- Stock holdings: auto-priced once a day ---------- */
+let lastStockFetchError = '';
+let autoRefreshAttempted = false;
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// Fetches each holding's previous close (Finnhub) + the USD->SEK rate
+// (Frankfurter, no key needed) at most once per calendar day, caching the
+// result in state.portfolio.stocksCache. Returns true if it actually
+// refreshed (so the caller can re-render). Any failure is recorded in
+// lastStockFetchError instead of being swallowed, so the UI can show it.
+async function refreshStockPricesIfNeeded(force) {
+  lastStockFetchError = '';
+  const holdings = state.portfolio.stockHoldings || [];
+  const apiKey = (state.portfolio.finnhubKey || '').trim();
+  if (!apiKey) { lastStockFetchError = 'No API key entered.'; return false; }
+  if (holdings.length === 0) { lastStockFetchError = 'No holdings added yet.'; return false; }
+  const today = todayStr();
+  if (!force && state.portfolio.stocksCache.date === today) return false;
+  const tickers = [...new Set(holdings.map(h => (h.ticker || '').trim().toUpperCase()).filter(Boolean))];
+  if (tickers.length === 0) { lastStockFetchError = 'No ticker symbols entered.'; return false; }
+  const prices = {};
+  try {
+    for (const t of tickers) {
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${encodeURIComponent(apiKey)}`);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) throw new Error(`Finnhub rejected the API key (HTTP ${res.status}). Check it's correct and active.`);
+        throw new Error(`Finnhub error for ${t}: HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (data && data.error) throw new Error(`Finnhub error for ${t}: ${data.error}`);
+      // pc = previous close — matches "check once a day, yesterday's close".
+      // Falls back to current price if pc isn't available for some reason.
+      const price = data && data.pc ? data.pc : (data && data.c) || 0;
+      if (!price) throw new Error(`No price returned for "${t}" — check the ticker symbol (e.g. non-US stocks need a suffix like ERIC-B.ST).`);
+      prices[t] = price;
+    }
+    const fxRes = await fetch('https://api.frankfurter.app/latest?from=USD&to=SEK');
+    if (!fxRes.ok) throw new Error(`Exchange-rate lookup failed (HTTP ${fxRes.status}).`);
+    const fxData = await fxRes.json();
+    const fx = (fxData && fxData.rates && fxData.rates.SEK) || (state.portfolio.stocksCache.fx || null);
+    state.portfolio.stocksCache = { date: today, fx, prices };
+    saveData();
+    return true;
+  } catch (e) {
+    lastStockFetchError = (e && e.message) ? e.message : 'Could not fetch prices — check your internet connection and try again.';
+    return false;
+  }
+}
+
+// Sums shares × cached price across all holdings, converted to SEK using
+// the cached FX rate. Uses whatever's cached — doesn't fetch.
+function stockHoldingsTotals() {
+  const cache = state.portfolio.stocksCache || {};
+  const prices = cache.prices || {};
+  const fx = Number(cache.fx) || 0;
+  let totalUsd = 0;
+  (state.portfolio.stockHoldings || []).forEach(h => {
+    const t = (h.ticker || '').trim().toUpperCase();
+    const shares = Number(h.shares) || 0;
+    const price = Number(prices[t]) || 0;
+    totalUsd += shares * price;
+  });
+  return { totalUsd, fx, totalSek: totalUsd * fx };
+}
+
+/* Cumulative amount put into a category across every month up to and
+   including `uptoKey` ("YYYY-MM" strings sort correctly). This is what
+   "Nuvarande" shows — it's derived, never entered directly, and it
+   naturally carries forward as new months are added. */
+function cumulativeContribution(catKey, uptoKey) {
+  let sum = 0;
+  Object.keys(state.investments.monthly).forEach(mk => {
+    if (mk <= uptoKey) {
+      sum += Number(state.investments.monthly[mk] && state.investments.monthly[mk][catKey]) || 0;
+    }
+  });
+  return sum;
+}
+
+/* All-time total put into a category across every tracked month
+   (no cutoff) — what the Portfolio tab's "Nuvarande" column carries
+   over from Investments. */
+function totalContribution(catKey) {
+  let sum = 0;
+  Object.keys(state.investments.monthly).forEach(mk => {
+    sum += Number(state.investments.monthly[mk] && state.investments.monthly[mk][catKey]) || 0;
+  });
+  return sum;
+}
+
+/* ---------- Rendering ---------- */
+const monthsRow = document.getElementById('monthsRow');
+const mainContainer = document.getElementById('mainContainer');
+const topSub = document.getElementById('topSub');
+
+function sortedMonthKeys() {
+  return Object.keys(state.months).sort();
+}
+
+function renderMonthsRow() {
+  monthsRow.innerHTML = '';
+  const keys = sortedMonthKeys();
+  keys.forEach(k => {
+    const [y,m] = k.split('-').map(Number);
+    const pill = document.createElement('div');
+    pill.className = 'month-pill' + (k === state.activeMonth ? ' active' : '');
+    pill.textContent = MONTH_NAMES[m-1].slice(0,3) + ' ' + String(y).slice(2);
+    pill.onclick = () => { state.activeMonth = k; openDayIndex = null; saveData(); render(); };
+    monthsRow.appendChild(pill);
+  });
+}
+
+function fmtSEK(n) {
+  return (Math.round(n*100)/100).toLocaleString('sv-SE', {minimumFractionDigits:0, maximumFractionDigits:0}) + ' kr';
+}
+function fmtHrs(n) {
+  const r = Math.round(n*100)/100;
+  return (r % 1 === 0 ? r.toFixed(0) : r.toFixed(2)) + ' h';
+}
+
+function computeMonthTotals(monthData) {
+  const computed = monthData.days.map((entry, i) => computeDay(entry, i));
+  let totalHours=0, totalOT=0, totalEarned=0, totalKm=0, totalCarAllowance=0;
+  let sumBase=0, sumEvening=0, sumNight=0, sumWeekdayOT=0, sumWeekend=0, sumWeekendOT=0, sumSpar=0;
+  computed.forEach(c => {
+    totalHours += c.hoursWorked;
+    totalOT += c.overtimeHours;
+    totalEarned += c.dayRate;
+    totalKm += c.km;
+    totalCarAllowance += c.carAllowance;
+    sumBase += c.baseHrs; sumEvening += c.eveningHrs; sumNight += c.nightHrs;
+    sumWeekdayOT += c.weekdayOtHrs; sumWeekend += c.weekendHrs; sumWeekendOT += c.weekendOtHrs;
+    sumSpar += c.sparbevakareAdd;
+  });
+  const tax = lookupTax(totalEarned);
+  const netto = totalEarned > 0 ? (totalEarned - tax) : 0;
+  const payout = netto + totalCarAllowance;
+  return { computed, totalHours, totalOT, totalEarned, totalKm, totalCarAllowance,
+           sumBase, sumEvening, sumNight, sumWeekdayOT, sumWeekend, sumWeekendOT, sumSpar,
+           tax, netto, payout };
+}
+
+function renderMain() {
+  mainContainer.innerHTML = '';
+  const key = state.activeMonth;
+  if (!key || !state.months[key]) {
+    mainContainer.innerHTML = `<div class="empty-state"><b>No month yet</b>Tap "+ New month" below to start a timesheet.</div>`;
+    topSub.textContent = 'Offline salary & timesheet';
+    return;
+  }
+  const monthData = state.months[key];
+  const [y,m] = key.split('-').map(Number);
+  topSub.textContent = MONTH_NAMES[m-1] + ' ' + y;
+
+  const { computed, totalHours, totalOT, totalEarned, totalKm, totalCarAllowance,
+          sumBase, sumEvening, sumNight, sumWeekdayOT, sumWeekend, sumWeekendOT, sumSpar,
+          tax, netto, payout } = computeMonthTotals(monthData);
+
+  const summary = document.createElement('div');
+  summary.className = 'summary-card';
+  summary.innerHTML = `
+    <div class="summary-top">
+      <div>
+        <div class="label">Total earned</div>
+        <div class="value">${fmtSEK(totalEarned)}</div>
+      </div>
+    </div>
+    <div class="summary-grid">
+      <div class="summary-mini"><div class="l">Hours worked</div><div class="v">${fmtHrs(totalHours)}</div></div>
+      <div class="summary-mini"><div class="l">Overtime hours</div><div class="v">${fmtHrs(totalOT)}</div></div>
+      <div class="summary-mini"><div class="l">Skatt (tax)</div><div class="v">${fmtSEK(tax)}</div></div>
+      <div class="summary-mini"><div class="l">Netto</div><div class="v">${fmtSEK(netto)}</div></div>
+      <div class="summary-mini"><div class="l">Car km driven</div><div class="v">${totalKm % 1 === 0 ? totalKm.toFixed(0) : totalKm.toFixed(1)} km</div></div>
+      <div class="summary-mini"><div class="l">Car allowance (tax-free)</div><div class="v">${fmtSEK(totalCarAllowance)}</div></div>
+    </div>
+    <div class="summary-mini" style="margin-top:10px;background:rgba(76,195,138,0.08);border-color:rgba(76,195,138,0.35);">
+      <div class="l">Total payout (netto + car allowance)</div>
+      <div class="v" style="font-size:19px;color:var(--good);">${fmtSEK(payout)}</div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-row"><span>Base rate hours (${RATE_BASE} kr/h)</span><b>${fmtHrs(sumBase)}</b></div>
+      <div class="breakdown-row"><span>Evening hours (${RATE_EVENING} kr/h)</span><b>${fmtHrs(sumEvening)}</b></div>
+      <div class="breakdown-row"><span>Night hours (${RATE_NIGHT} kr/h)</span><b>${fmtHrs(sumNight)}</b></div>
+      <div class="breakdown-row"><span>Weekday overtime (${RATE_WEEKDAY_OT} kr/h)</span><b>${fmtHrs(sumWeekdayOT)}</b></div>
+      <div class="breakdown-row"><span>Weekend/holiday (${RATE_WEEKEND} kr/h)</span><b>${fmtHrs(sumWeekend)}</b></div>
+      <div class="breakdown-row"><span>Weekend/holiday OT (${RATE_WEEKEND_OT} kr/h)</span><b>${fmtHrs(sumWeekendOT)}</b></div>
+      <div class="breakdown-row"><span>Sparbevakare addition</span><b>${fmtSEK(sumSpar)}</b></div>
+      <div class="breakdown-row"><span>Car allowance (${RATE_KM} kr/km, tax-free)</span><b>${fmtSEK(totalCarAllowance)}</b></div>
+    </div>
+  `;
+  mainContainer.appendChild(summary);
+
+  const listTitle = document.createElement('div');
+  listTitle.className = 'section-title';
+  listTitle.textContent = 'Days';
+  mainContainer.appendChild(listTitle);
+
+  const list = document.createElement('div');
+  list.className = 'day-list';
+
+  monthData.days.forEach((entry, i) => {
+    const c = computed[i];
+    const date = new Date(entry.dateStr + 'T00:00:00');
+    const dow = DOW_ABBR[c.weekday - 1];
+    const dayNum = date.getDate();
+
+    const card = document.createElement('div');
+    card.className = 'day-card' + (c.isWeekendOrHoliday ? ' weekend' : '') + (c.hasData ? ' has-data' : '') + (openDayIndex === i ? ' open' : '');
+
+    const carLine = c.carAllowance > 0.001 ? `<div style="color:var(--blue);font-weight:600;font-size:12px;">🚗 ${fmtSEK(c.carAllowance)}</div>` : '';
+    const summaryHtml = c.hasData
+      ? `<div class="hrs">${fmtHrs(c.hoursWorked)}${c.overtimeHours>0.001?` <span style="color:var(--text-dim);font-weight:500;">(+${fmtHrs(c.overtimeHours)} OT)</span>`:''}</div><div class="rate">${fmtSEK(c.dayRate)}</div>${carLine}`
+      : (c.carAllowance > 0.001 ? carLine : `<div class="empty">—</div>`);
+
+    card.innerHTML = `
+      <div class="day-head" data-idx="${i}">
+        <div class="left">
+          <div>
+            <div class="day-date">${dayNum} ${MONTH_NAMES[m-1].slice(0,3)}</div>
+            <div class="day-dow">${dow}${entry.holiday ? ' · Holiday' : ''}${entry.sparbevakare ? ' · Sparb.' : ''}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;">
+          <div class="day-summary">${summaryHtml}</div>
+          <div class="chevron">▶</div>
+        </div>
+      </div>
+      <div class="day-body">
+        <div class="field-row">
+          <div class="field"><label>Start</label><input type="text" inputmode="none" readonly class="calc-trigger" data-field="start" data-idx="${i}" value="${entry.start||''}" placeholder="--:--"></div>
+          <div class="field"><label>Stop</label><input type="text" inputmode="none" readonly class="calc-trigger" data-field="stop" data-idx="${i}" value="${entry.stop||''}" placeholder="--:--"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Lunch start</label><input type="text" inputmode="none" readonly class="calc-trigger" data-field="lunchStart" data-idx="${i}" value="${entry.lunchStart||''}" placeholder="--:--"></div>
+          <div class="field"><label>Lunch (min)</label><input type="number" inputmode="numeric" min="0" step="5" placeholder="e.g. 60" data-field="lunchDur" data-idx="${i}" value="${entry.lunchDur||''}"></div>
+        </div>
+        <div class="toggle-row">
+          <label class="toggle ${entry.sparbevakare?'on':''}"><input type="checkbox" data-field="sparbevakare" data-idx="${i}" ${entry.sparbevakare?'checked':''}>Sparbevakare</label>
+          <label class="toggle ${entry.holiday?'on':''}"><input type="checkbox" data-field="holiday" data-idx="${i}" ${entry.holiday?'checked':''}>Holiday</label>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Car km driven (tax-free, ${RATE_KM} kr/km)</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="e.g. 20" data-field="km" data-idx="${i}" value="${entry.km||''}"></div>
+        </div>
+        <div class="notes-row field">
+          <label>Notes</label>
+          <input type="text" data-field="notes" data-idx="${i}" value="${entry.notes ? escapeHtml(entry.notes) : ''}" placeholder="Optional">
+        </div>
+        ${(c.hasData || c.carAllowance > 0.001) ? `
+        <div class="day-compute">
+          ${c.hasData ? `
+          <div>Base hrs: <b>${fmtHrs(c.baseHrs)}</b></div>
+          <div>Evening hrs: <b>${fmtHrs(c.eveningHrs)}</b></div>
+          <div>Night hrs: <b>${fmtHrs(c.nightHrs)}</b></div>
+          <div>Weekend/OT: <b>${fmtHrs(c.weekendHrs)}/${fmtHrs(c.weekendOtHrs)}</b></div>
+          <div>Weekday OT: <b>${fmtHrs(c.weekdayOtHrs)}</b></div>
+          <div>Sparb. add: <b>${fmtSEK(c.sparbevakareAdd)}</b></div>` : ''}
+          ${c.carAllowance > 0.001 ? `<div>Car allowance: <b>${fmtSEK(c.carAllowance)}</b></div>` : ''}
+        </div>` : ''}
+        <button class="clear-day" data-idx="${i}">Clear this day</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  mainContainer.appendChild(list);
+
+  const note = document.createElement('div');
+  note.className = 'rates-note';
+  note.innerHTML = `<b>Rates:</b> Base ${RATE_BASE} kr (Mon–Fri 06:00–17:30) · +51.61 kr evening (Mon–Thu 17:30–22:00, Fri 17:30–19:00) · +112.13 kr night (Mon–Thu 22:00–05:00) · ${RATE_WEEKDAY_OT} kr/h weekday overtime (after 8h, Mon 06:00–Fri 19:00) · ${RATE_WEEKEND} kr/h weekend/holiday (after 8h: ${RATE_WEEKEND_OT} kr/h) · +${RATE_SPARBEVAKARE} kr/h sparbevakare on top. Hours outside these windows default to the base rate.`;
+  mainContainer.appendChild(note);
+
+  attachDayListeners();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderInvest() {
+  mainContainer.innerHTML = '';
+  const key = state.activeMonth;
+  if (!key || !state.months[key]) {
+    mainContainer.innerHTML = `<div class="empty-state"><b>No month yet</b>Create a month in the Lön tab first.</div>`;
+    topSub.textContent = 'Investments';
+    return;
+  }
+  const [y,m] = key.split('-').map(Number);
+  topSub.textContent = 'Investments — ' + MONTH_NAMES[m-1] + ' ' + y;
+
+  const { netto, totalCarAllowance, payout } = computeMonthTotals(state.months[key]);
+  const monthly = state.investments.monthly[key] || {};
+  let allocated = 0;
+  CATEGORIES.forEach(c => { allocated += Number(monthly[c.key]) || 0; });
+  const remaining = payout - allocated;
+
+  const card = document.createElement('div');
+  card.className = 'invest-card';
+  card.innerHTML = `
+    <div class="invest-hero">
+      <div class="l">Payout this month</div>
+      <div class="v">${fmtSEK(payout)}</div>
+    </div>
+    <div class="invest-row"><span>Netto</span><b>${fmtSEK(netto)}</b></div>
+    <div class="invest-row"><span>Car allowance (tax-free)</span><b>${fmtSEK(totalCarAllowance)}</b></div>
+    <div class="invest-row"><span>Allocated this month</span><b>${fmtSEK(allocated)}</b></div>
+    <div class="invest-row"><span>Remaining</span><b style="${remaining<0?'color:var(--warn);':''}">${fmtSEK(remaining)}</b></div>
+  `;
+  mainContainer.appendChild(card);
+
+  const listTitle = document.createElement('div');
+  listTitle.className = 'section-title';
+  listTitle.textContent = 'Savings & investments';
+  mainContainer.appendChild(listTitle);
+
+  CATEGORIES.forEach(cat => {
+    const t = state.investments.targets[cat.key] || {};
+    const target = Number(t.target) || 0;
+    const current = cumulativeContribution(cat.key, key);
+    const pct = target > 0 ? Math.round((current / target) * 100) : 0;
+    const pctClamped = Math.max(0, Math.min(100, pct));
+    const remaining = target > 0 ? Math.max(0, target - current) : 0;
+    const monthlyVal = monthly[cat.key] != null ? monthly[cat.key] : '';
+
+    const c = document.createElement('div');
+    c.className = 'cat-card';
+    c.innerHTML = `
+      <div class="cat-head">
+        <span class="cat-dot" style="background:${cat.color}"></span>
+        <span class="cat-name">${cat.name}</span>
+        <span class="cat-pct" style="background:${target>0?cat.color+'22':'transparent'};color:${cat.color}">${target>0 ? (remaining>0 ? fmtSEK(remaining)+' left' : 'Target met') : '–'}</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pctClamped}%;background:${cat.color}"></div></div>
+      <div class="cat-fields">
+        <div class="field"><label>This month</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-cat="${cat.key}" data-role="monthly" value="${monthlyVal}"></div>
+        <div class="field"><label>Target</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-cat="${cat.key}" data-role="target" value="${t.target != null ? t.target : ''}"></div>
+        <div class="field"><label>Nuvarande</label><div class="cat-current">${fmtSEK(current)}</div></div>
+      </div>
+    `;
+    mainContainer.appendChild(c);
+  });
+
+  const note = document.createElement('div');
+  note.className = 'rates-note';
+  note.innerHTML = `<b>This month</b> = how much of this month's salary you're putting toward each goal. <b>Nuvarande</b> is calculated automatically — the running total of everything you've put in across every month so far, compared against your <b>Target</b>. It carries forward on its own as you add new months; Target can be changed anytime.`;
+  mainContainer.appendChild(note);
+
+  mainContainer.querySelectorAll('[data-role="monthly"]').forEach(inp => {
+    inp.addEventListener('click', () => {
+      const catKey = inp.dataset.cat;
+      const current = (state.investments.monthly[key] && state.investments.monthly[key][catKey]) || '';
+      const catName = CATEGORIES.find(c => c.key === catKey).name;
+      openNumberCalculator(`${catName} — This month`, 'kr', current, (val) => {
+        state.investments.monthly[key] = state.investments.monthly[key] || {};
+        state.investments.monthly[key][catKey] = val;
+        saveData();
+        render();
+      });
+    });
+  });
+  mainContainer.querySelectorAll('[data-role="target"]').forEach(inp => {
+    inp.addEventListener('click', () => {
+      const catKey = inp.dataset.cat;
+      const current = (state.investments.targets[catKey] && state.investments.targets[catKey].target) || '';
+      const catName = CATEGORIES.find(c => c.key === catKey).name;
+      openNumberCalculator(`${catName} — Target`, 'kr', current, (val) => {
+        state.investments.targets[catKey] = state.investments.targets[catKey] || {};
+        state.investments.targets[catKey].target = val;
+        saveData();
+        render();
+      });
+    });
+  });
+}
+
+function renderPortfolio() {
+  mainContainer.innerHTML = '';
+  topSub.textContent = 'Portfolio';
+
+  // Kicks off a price refresh in the background if today's isn't cached yet
+  // (no-ops instantly otherwise). Re-renders once new prices — or an
+  // error — land. Only auto-attempted once per page load so a failure
+  // doesn't retry silently on every re-render.
+  if (!autoRefreshAttempted) {
+    autoRefreshAttempted = true;
+    refreshStockPricesIfNeeded().then(updated => { if (updated || lastStockFetchError) render(); });
+  }
+
+  const key = state.activeMonth;
+  ensurePortfolioMonthValues(key);
+
+  const stocksVal = Number(portfolioValueFor('stocks', key)) || 0;
+  const monthlyContrib = (state.investments.monthly && state.investments.monthly[key]) || {};
+
+  let grandTotal = stocksVal;
+  let grandTotalAtTarget = stocksVal;
+  const rows = CATEGORIES.map(cat => {
+    const value = Number(portfolioValueFor(cat.key, key)) || 0;
+    // Nuvarande = this month's contribution (from the Investing tab, same
+    // month). Cumulative all-time contribution is still tracked separately,
+    // purely to project "if target is met" figures below.
+    const nuvarande = Number(monthlyContrib[cat.key]) || 0;
+    const cumulative = totalContribution(cat.key);
+    const total = value + nuvarande;
+    const t = state.investments.targets[cat.key] || {};
+    const target = Number(t.target) || 0;
+    // If a target is set, project this category at whichever is higher —
+    // the target itself, or what's already been put in (never project down).
+    const totalAtTarget = value + (target > 0 ? Math.max(target, cumulative) : cumulative);
+    grandTotal += total;
+    grandTotalAtTarget += totalAtTarget;
+    return { cat, value, nuvarande, cumulative, total, target, totalAtTarget };
+  });
+
+  const cashTotal = rows.filter(r => CASH_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.total, 0);
+  const stocksIndexTotal = rows.filter(r => STOCK_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.total, 0) + stocksVal;
+  const resaRow = rows.find(r => r.cat.key === 'resa') || { total: 0, totalAtTarget: 0 };
+  const resaTotal = resaRow.total;
+  const netExclResa = grandTotal - resaTotal;
+
+  // Apartment sale proceeds — only the distributed portions count, and only
+  // toward the "if target is met" figures (Cash, Stocks/Index, and the top total).
+  const apt = state.portfolio.apartmentSale || {};
+  const aptToCash = Number(apt.toCash) || 0;
+  const aptToIndex = Number(apt.toIndex) || 0;
+
+  const cashAtTarget = rows.filter(r => CASH_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.totalAtTarget, 0) + aptToCash;
+  const stocksIndexAtTarget = rows.filter(r => STOCK_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.totalAtTarget, 0) + stocksVal + aptToIndex;
+  const totalAtTargetExclResa = (grandTotalAtTarget - resaRow.totalAtTarget) + aptToCash + aptToIndex;
+
+  // How much more still needs to be invested (contributed) to reach every
+  // target, excluding Resa — i.e. sum of each category's remaining gap.
+  const remainingToTargets = rows
+    .filter(r => r.cat.key !== 'resa' && r.target > 0)
+    .reduce((s, r) => s + Math.max(0, r.target - r.cumulative), 0);
+
+  const summary = document.createElement('div');
+  summary.className = 'summary-card';
+  summary.innerHTML = `
+    <div class="summary-top">
+      <div>
+        <div class="label">Total value if targets are met (excl. Resa)</div>
+        <div class="value" style="color:#2f9e6c;">${fmtSEK(totalAtTargetExclResa)}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">${remainingToTargets>0 ? fmtSEK(remainingToTargets)+' left to invest to reach targets' : 'All targets met'}</div>
+      </div>
+    </div>
+    <div class="summary-grid">
+      <div class="summary-mini"><div class="l">Resa</div><div class="v" style="color:#3fa7a0;">${fmtSEK(resaTotal)}</div></div>
+      <div class="summary-mini"><div class="l">Cash (Sparkonto, Buffert)</div><div class="v" style="color:var(--accent);">${fmtSEK(cashTotal)}</div></div>
+      <div class="summary-mini"><div class="l">Cash value if target is met</div><div class="v" style="color:#c98f3a;">${fmtSEK(cashAtTarget)}</div></div>
+      <div class="summary-mini"><div class="l">Stocks/Index funds</div><div class="v" style="color:var(--blue);">${fmtSEK(stocksIndexTotal)}</div></div>
+      <div class="summary-mini"><div class="l">Stocks value if target is met</div><div class="v" style="color:#8fb3ff;">${fmtSEK(stocksIndexAtTarget)}</div></div>
+      <div class="summary-mini"><div class="l">Net value (excl. Resa)</div><div class="v" style="color:#6fe3ab;">${fmtSEK(netExclResa)}</div></div>
+    </div>
+  `;
+  mainContainer.appendChild(summary);
+
+  const listTitle = document.createElement('div');
+  listTitle.className = 'section-title';
+  listTitle.textContent = 'Savings & investments';
+  mainContainer.appendChild(listTitle);
+
+  rows.forEach(({ cat, value, nuvarande, total }) => {
+    const c = document.createElement('div');
+    c.className = 'cat-card';
+    c.innerHTML = `
+      <div class="cat-head">
+        <span class="cat-dot" style="background:${cat.color}"></span>
+        <span class="cat-name">${cat.name}</span>
+      </div>
+      <div class="cat-fields">
+        <div class="field"><label>Value</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-cat="${cat.key}" data-role="pvalue" value="${portfolioValueFor(cat.key, key)}"></div>
+        <div class="field"><label>Nuvarande</label><div class="cat-current">${fmtSEK(nuvarande)}</div></div>
+        <div class="field"><label>Total</label><div class="cat-total">${fmtSEK(total)}</div></div>
+      </div>
+    `;
+    mainContainer.appendChild(c);
+  });
+
+  const stocksTitle = document.createElement('div');
+  stocksTitle.className = 'section-title';
+  stocksTitle.textContent = 'Other';
+  mainContainer.appendChild(stocksTitle);
+
+  const stocksCard = document.createElement('div');
+  stocksCard.className = 'cat-card';
+  stocksCard.innerHTML = `
+    <div class="cat-head">
+      <span class="cat-dot" style="background:var(--blue)"></span>
+      <span class="cat-name">Stocks</span>
+    </div>
+    <div class="cat-fields single">
+      <div class="field"><label>Value</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-role="stocks" value="${portfolioValueFor('stocks', key)}"></div>
+    </div>
+  `;
+  mainContainer.appendChild(stocksCard);
+
+  /* ---------- Auto-priced stock holdings ---------- */
+  const holdings = state.portfolio.stockHoldings || [];
+  const cache = state.portfolio.stocksCache || { date: '', fx: null, prices: {} };
+  const { totalUsd, fx, totalSek } = stockHoldingsTotals();
+  const hasKey = !!(state.portfolio.finnhubKey || '').trim();
+
+  const autoTitle = document.createElement('div');
+  autoTitle.className = 'section-title';
+  autoTitle.textContent = 'Stocks portfolio (auto-priced)';
+  mainContainer.appendChild(autoTitle);
+
+  const autoCard = document.createElement('div');
+  autoCard.className = 'cat-card';
+  autoCard.innerHTML = `
+    <div class="field" style="margin-bottom:12px;">
+      <label>Finnhub API key</label>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="finnhubKeyInput" placeholder="Paste your free Finnhub API key" value="${escapeHtml(state.portfolio.finnhubKey || '')}" style="flex:1;">
+        <button type="button" id="toggleKeyVisibility" style="flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--text-dim);border-radius:9px;padding:0 12px;font-size:13px;font-weight:600;">Show</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Free key at finnhub.io/register. Stored only on this device. Non-US tickers need the exchange suffix, e.g. ERIC-B.ST.</div>
+    </div>
+    <div id="holdingsList"></div>
+    <button type="button" class="clear-day" id="addHoldingBtn" style="color:var(--text);border-color:var(--border);margin-top:2px;">+ Add holding</button>
+    <div class="day-compute" style="margin-top:14px;">
+      <div>USD total <b>$${totalUsd.toFixed(2)}</b></div>
+      <div>USD→SEK <b>${fx ? fx.toFixed(3) : '–'}</b></div>
+      <div>Total <b>${fmtSEK(totalSek)}</b></div>
+      <div>Priced <b>${cache.date || 'never'}</b></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;">Refresh now</button>
+      <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use as this month's Stocks value</button>
+    </div>
+    ${!hasKey ? '<div style="margin-top:10px;font-size:12px;color:var(--warn);">Add an API key above to enable price fetching.</div>' : ''}
+    ${lastStockFetchError ? `<div style="margin-top:10px;font-size:12px;color:var(--warn);">⚠ ${escapeHtml(lastStockFetchError)}</div>` : ''}
+  `;
+  mainContainer.appendChild(autoCard);
+
+  const holdingsListEl = autoCard.querySelector('#holdingsList');
+  holdings.forEach((h, i) => {
+    const t = (h.ticker || '').trim().toUpperCase();
+    const price = cache.prices ? cache.prices[t] : undefined;
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.style.alignItems = 'flex-end';
+    row.innerHTML = `
+      <div class="field" style="flex:1.4;">
+        <label>Ticker</label>
+        <input type="text" data-role="hticker" data-i="${i}" value="${escapeHtml(h.ticker || '')}" placeholder="AAPL" style="text-transform:uppercase;">
+      </div>
+      <div class="field">
+        <label>Shares</label>
+        <input type="number" inputmode="decimal" step="any" data-role="hshares" data-i="${i}" value="${h.shares != null ? h.shares : ''}" placeholder="0">
+      </div>
+      <button type="button" data-role="hremove" data-i="${i}" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--warn);border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600;">✕</button>
+    `;
+    holdingsListEl.appendChild(row);
+    const priceNote = document.createElement('div');
+    priceNote.style.cssText = 'font-size:11.5px;color:var(--text-dim);margin:-4px 0 10px 2px;';
+    priceNote.textContent = (t && price != null)
+      ? `${t}: $${Number(price).toFixed(2)} · ${fmtSEK((Number(h.shares)||0) * Number(price) * (fx||0))}`
+      : (t ? `${t}: not priced yet` : '');
+    holdingsListEl.appendChild(priceNote);
+  });
+
+  autoCard.querySelector('#finnhubKeyInput').addEventListener('change', (e) => {
+    state.portfolio.finnhubKey = e.target.value.trim();
+    saveData();
+  });
+  autoCard.querySelector('#toggleKeyVisibility').addEventListener('click', (e) => {
+    const inp = autoCard.querySelector('#finnhubKeyInput');
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    e.target.textContent = showing ? 'Show' : 'Hide';
+  });
+  autoCard.querySelector('#addHoldingBtn').addEventListener('click', () => {
+    state.portfolio.stockHoldings.push({ ticker: '', shares: '' });
+    saveData();
+    render();
+  });
+  autoCard.querySelector('#refreshPricesBtn').addEventListener('click', async () => {
+    await refreshStockPricesIfNeeded(true);
+    render();
+  });
+  autoCard.querySelector('#applyStocksBtn').addEventListener('click', () => {
+    state.portfolio.monthlyValues[key] = state.portfolio.monthlyValues[key] || {};
+    state.portfolio.monthlyValues[key].stocks = Math.round(stockHoldingsTotals().totalSek);
+    saveData();
+    render();
+  });
+  autoCard.querySelectorAll('[data-role="hticker"]').forEach(inp => {
+    inp.addEventListener('change', (e) => {
+      const i = Number(e.target.dataset.i);
+      state.portfolio.stockHoldings[i].ticker = e.target.value.trim().toUpperCase();
+      saveData();
+      render();
+    });
+  });
+  autoCard.querySelectorAll('[data-role="hshares"]').forEach(inp => {
+    inp.addEventListener('change', (e) => {
+      const i = Number(e.target.dataset.i);
+      state.portfolio.stockHoldings[i].shares = e.target.value;
+      saveData();
+      render();
+    });
+  });
+  autoCard.querySelectorAll('[data-role="hremove"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const i = Number(e.currentTarget.dataset.i);
+      state.portfolio.stockHoldings.splice(i, 1);
+      saveData();
+      render();
+    });
+  });
+
+  const aptValue = Number(apt.value) || 0;
+  const aptDistributed = aptToCash + aptToIndex;
+  const aptDiff = aptDistributed - aptValue;
+  const aptMismatch = Math.abs(aptDiff) > 0.005;
+
+  const aptCard = document.createElement('div');
+  aptCard.className = 'cat-card';
+  aptCard.innerHTML = `
+    <div class="cat-head">
+      <span class="cat-dot" style="background:#3fa7a0"></span>
+      <span class="cat-name">Sale of apartment</span>
+    </div>
+    <div class="cat-fields single">
+      <div class="field"><label>Value</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-role="aptValue" value="${apt.value != null ? apt.value : ''}"></div>
+    </div>
+    <div class="cat-fields" style="grid-template-columns:1fr 1fr;margin-top:10px;">
+      <div class="field"><label>To Index funds</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-role="aptToIndex" value="${apt.toIndex != null ? apt.toIndex : ''}"></div>
+      <div class="field"><label>To Cash</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-role="aptToCash" value="${apt.toCash != null ? apt.toCash : ''}"></div>
+    </div>
+    ${aptMismatch ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(239,106,106,0.1);border:1px solid var(--warn);border-radius:8px;color:var(--warn);font-size:12.5px;font-weight:600;">⚠ To Index funds + To Cash (${fmtSEK(aptDistributed)}) ${aptDiff > 0 ? 'exceeds' : 'is lower than'} the sale Value (${fmtSEK(aptValue)}).</div>` : ''}
+  `;
+  mainContainer.appendChild(aptCard);
+
+  const note = document.createElement('div');
+  note.className = 'rates-note';
+  note.innerHTML = `<b>Value</b> for LYSA, Avanza Global Index, Sparkonto and Stocks is entered fresh each month — the actual balance at the start of that month — and can be adjusted per month; Resa and Buffert keep one shared value. <b>Nuvarande</b> is this month's contribution, carried over automatically from the Investments tab's "This month" figure for the same month. <b>Total</b> is Value + Nuvarande (a projection of the balance once this month's contribution lands). <b>Stocks</b> has no Nuvarande — it's Value only. <b>Sale of apartment</b> — Value is just a record of the proceeds; only <b>To Index funds</b> and <b>To Cash</b> actually count, and only toward the "if target is met" figures. "<b>...if target is met</b>" projects a category at its Investments target (or its all-time contributions so far if that's already higher). <b>Cash</b> = Sparkonto + Buffert. <b>Stocks/Index funds</b> = LYSA + Avanza Global + Stocks. <b>Net value (excl. Resa)</b> is Total value minus Resa. The top number is the total value if all targets are met, with Resa excluded.`;
+  mainContainer.appendChild(note);
+
+  mainContainer.querySelectorAll('[data-role="aptValue"]').forEach(inp => {
+    inp.addEventListener('click', () => {
+      const current = state.portfolio.apartmentSale.value != null ? state.portfolio.apartmentSale.value : '';
+      openNumberCalculator('Sale of apartment — Value', 'kr', current, (val) => {
+        state.portfolio.apartmentSale.value = val;
+        saveData();
+        render();
+      });
+    });
+  });
+  mainContainer.querySelectorAll('[data-role="aptToIndex"]').forEach(inp => {
+    inp.addEventListener('click', () => {
+      const current = state.portfolio.apartmentSale.toIndex != null ? state.portfolio.apartmentSale.toIndex : '';
+      openNumberCalculator('Sale of apartment — To Index funds', 'kr', current, (val) => {
+        state.portfolio.apartmentSale.toIndex = val;
+        saveData();
+        render();
+      });
+    });
+  });
+  mainContainer.querySelectorAll('[data-role="aptToCash"]').forEach(inp => {
+    inp.addEventListener('click', () => {
+      const current = state.portfolio.apartmentSale.toCash != null ? state.portfolio.apartmentSale.toCash : '';
+      openNumberCalculator('Sale of apartment — To Cash', 'kr', current, (val) => {
+        state.portfolio.apartmentSale.toCash = val;
+        saveData();
+        render();
+      });
+    });
+  });
+
+  mainContainer.querySelectorAll('[data-role="pvalue"]').forEach(inp => {
+    inp.addEventListener('click', () => {
+      const catKey = inp.dataset.cat;
+      const current = portfolioValueFor(catKey, key);
+      const catName = CATEGORIES.find(c => c.key === catKey).name;
+      const label = PORTFOLIO_MONTHLY_KEYS.includes(catKey)
+        ? `${catName} — Value (${MONTH_NAMES[Number(key.split('-')[1])-1]} ${key.split('-')[0]})`
+        : `${catName} — Value`;
+      openNumberCalculator(label, 'kr', current, (val) => {
+        if (PORTFOLIO_MONTHLY_KEYS.includes(catKey)) {
+          state.portfolio.monthlyValues[key] = state.portfolio.monthlyValues[key] || {};
+          state.portfolio.monthlyValues[key][catKey] = val;
+        } else {
+          state.portfolio.values[catKey] = val;
+        }
+        saveData();
+        render();
+      });
+    });
+  });
+  mainContainer.querySelectorAll('[data-role="stocks"]').forEach(inp => {
+    inp.addEventListener('click', () => {
+      const current = portfolioValueFor('stocks', key);
+      const label = `Stocks — Value (${MONTH_NAMES[Number(key.split('-')[1])-1]} ${key.split('-')[0]})`;
+      openNumberCalculator(label, 'kr', current, (val) => {
+        state.portfolio.monthlyValues[key] = state.portfolio.monthlyValues[key] || {};
+        state.portfolio.monthlyValues[key].stocks = val;
+        saveData();
+        render();
+      });
+    });
+  });
+}
+
+/* ---------- Graph tab: category values over time ---------- */
+/* Renders a multi-line SVG chart (grid, lines, dots, x-axis labels) for a
+   given set of {name, color, points} series against the shared month keys.
+   Kept separate from data-building so both the per-category and total
+   charts can reuse the same drawing logic with their own value scale. */
+function buildLineChartSVG(seriesArr, keys) {
+  const allVals = seriesArr.flatMap(d => d.points);
+  const maxVal = Math.max(1, ...allVals);
+  const minVal = Math.min(0, ...allVals);
+
+  const W = 800, H = 380;
+  const padL = 55, padR = 16, padT = 16, padB = 40;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const xFor = (i) => keys.length === 1 ? padL + plotW / 2 : padL + (i / (keys.length - 1)) * plotW;
+  const yFor = (v) => padT + plotH - ((v - minVal) / ((maxVal - minVal) || 1)) * plotH;
+
+  const gridCount = 4;
+  let gridLines = '';
+  for (let g = 0; g <= gridCount; g++) {
+    const v = minVal + (maxVal - minVal) * (g / gridCount);
+    const y = yFor(v);
+    gridLines += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#2c3140" stroke-width="1"/>`;
+    gridLines += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#9aa1b3">${Math.round(v / 1000)}k</text>`;
+  }
+
+  let xLabels = '';
+  keys.forEach((mk, i) => {
+    const [y, m] = mk.split('-').map(Number);
+    // Thin labels out if there are many months, keeping first/last.
+    const step = Math.ceil(keys.length / 8);
+    if (keys.length <= 8 || i % step === 0 || i === keys.length - 1) {
+      const x = xFor(i);
+      xLabels += `<text x="${x}" y="${H - padB + 16}" text-anchor="middle" font-size="10" fill="#9aa1b3">${MONTH_NAMES[m - 1].slice(0, 3)} ${String(y).slice(2)}</text>`;
+    }
+  });
+
+  let lines = '';
+  let dots = '';
+  seriesArr.forEach(d => {
+    const pathD = d.points.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i)} ${yFor(v)}`).join(' ');
+    lines += `<path d="${pathD}" fill="none" stroke="${d.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    d.points.forEach((v, i) => {
+      dots += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="3" fill="${d.color}"/>`;
+    });
+  });
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
+      ${gridLines}
+      ${lines}
+      ${dots}
+      ${xLabels}
+    </svg>
+  `;
+}
+
+function renderGraph() {
+  mainContainer.innerHTML = '';
+  topSub.textContent = 'Portfolio — Graph';
+
+  const keys = sortedMonthKeys();
+
+  if (keys.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'rates-note';
+    empty.textContent = 'Add at least one month to see a graph.';
+    mainContainer.appendChild(empty);
+    return;
+  }
+
+  // Same set of categories as the Portfolio tab, plus Stocks. Each point is
+  // that category's Total for the month (Value + that month's contribution;
+  // Stocks has no contribution, so it's Value only).
+  const series = [
+    { key: 'lysa', name: 'LYSA', color: '#5b8cff' },
+    { key: 'avanzaGlobal', name: 'Avanza Global Index', color: '#4cc38a' },
+    { key: 'sparkonto', name: 'Sparkonto', color: '#f5a623' },
+    { key: 'resa', name: 'Resa', color: '#3fa7a0' },
+    { key: 'buffert', name: 'Buffert', color: '#ef6a6a' },
+    { key: 'stocks', name: 'Stocks', color: '#a78bfa' },
+  ];
+
+  const data = series.map(s => {
+    const points = keys.map(mk => {
+      const value = Number(portfolioValueFor(s.key, mk)) || 0;
+      const monthlyContrib = (state.investments.monthly && state.investments.monthly[mk]) || {};
+      const contrib = s.key === 'stocks' ? 0 : (Number(monthlyContrib[s.key]) || 0);
+      return value + contrib;
+    });
+    return Object.assign({}, s, { points });
+  });
+
+  const card = document.createElement('div');
+  card.className = 'summary-card';
+  card.innerHTML = `<div class="section-title" style="margin:0 0 12px;">Portfolio value over time</div>${buildLineChartSVG(data, keys)}`;
+  mainContainer.appendChild(card);
+
+  const legend = document.createElement('div');
+  legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:14px;';
+  legend.innerHTML = data.map(d => `
+    <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#9aa1b3;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${d.color};display:inline-block;"></span>
+      ${d.name}
+    </div>
+  `).join('');
+  mainContainer.appendChild(legend);
+
+  const note = document.createElement('div');
+  note.className = 'rates-note';
+  note.textContent = "Each point is that category's Total for the month (Value + that month's contribution). Stocks has no monthly contribution, so its line is Value only.";
+  mainContainer.appendChild(note);
+
+  // Second chart: the combined total across every category, so the overall
+  // change in portfolio value over time is visible on its own.
+  const totalPoints = keys.map((mk, i) => data.reduce((s, d) => s + d.points[i], 0));
+  const totalSeries = [{ name: 'Total portfolio value', color: '#4cc38a', points: totalPoints }];
+  const firstTotal = totalPoints[0];
+  const lastTotal = totalPoints[totalPoints.length - 1];
+  const netChange = lastTotal - firstTotal;
+  const changeColor = netChange >= 0 ? '#4cc38a' : '#ef6a6a';
+  const changeSign = netChange >= 0 ? '+' : '';
+
+  const totalTitleRow = document.createElement('div');
+  totalTitleRow.style.cssText = 'display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:28px 0 12px;flex-wrap:wrap;';
+  totalTitleRow.innerHTML = `
+    <div class="section-title" style="margin:0;">Total portfolio value over time</div>
+    ${keys.length > 1 ? `<div style="font-size:12.5px;color:${changeColor};font-weight:600;">${changeSign}${fmtSEK(netChange)} since ${MONTH_NAMES[Number(keys[0].split('-')[1])-1].slice(0,3)} ${keys[0].split('-')[0]}</div>` : ''}
+  `;
+
+  const totalCard = document.createElement('div');
+  totalCard.className = 'summary-card';
+  totalCard.appendChild(totalTitleRow);
+  const totalSvgWrap = document.createElement('div');
+  totalSvgWrap.innerHTML = buildLineChartSVG(totalSeries, keys);
+  totalCard.appendChild(totalSvgWrap);
+  mainContainer.appendChild(totalCard);
+
+  const totalNote = document.createElement('div');
+  totalNote.className = 'rates-note';
+  totalNote.textContent = 'The combined value of every category above (LYSA, Avanza Global Index, Sparkonto, Resa, Buffert and Stocks) for each month.';
+  mainContainer.appendChild(totalNote);
+}
+
+function render() {
+  renderMonthsRow();
+  document.getElementById('tabBtnLon').classList.toggle('active', state.activeTab === 'lon');
+  document.getElementById('tabBtnInvest').classList.toggle('active', state.activeTab === 'invest');
+  document.getElementById('tabBtnPortfolio').classList.toggle('active', state.activeTab === 'portfolio');
+  document.getElementById('tabBtnGraph').classList.toggle('active', state.activeTab === 'graph');
+  if (state.activeTab === 'invest') renderInvest();
+  else if (state.activeTab === 'portfolio') renderPortfolio();
+  else if (state.activeTab === 'graph') renderGraph();
+  else renderMain();
+}
+document.getElementById('tabBtnLon').addEventListener('click', () => { state.activeTab = 'lon'; saveData(); render(); });
+document.getElementById('tabBtnInvest').addEventListener('click', () => { state.activeTab = 'invest'; saveData(); render(); });
+document.getElementById('tabBtnPortfolio').addEventListener('click', () => { state.activeTab = 'portfolio'; saveData(); render(); });
+document.getElementById('tabBtnGraph').addEventListener('click', () => { state.activeTab = 'graph'; saveData(); render(); });
+
+
+function attachDayListeners() {
+  mainContainer.querySelectorAll('.day-head').forEach(h => {
+    h.addEventListener('click', () => {
+      const idx = Number(h.dataset.idx);
+      openDayIndex = (openDayIndex === idx) ? null : idx;
+      render();
+    });
+  });
+  mainContainer.querySelectorAll('[data-field]').forEach(inp => {
+    if (inp.classList.contains('calc-trigger')) {
+      inp.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = Number(inp.dataset.idx);
+        const field = inp.dataset.field;
+        const key = state.activeMonth;
+        const currentVal = state.months[key].days[idx][field] || '';
+        if (field === 'km') {
+          openNumberCalculator('Car km driven', 'km', currentVal, (val) => {
+            state.months[key].days[idx][field] = val;
+            saveData();
+            render();
+          });
+        } else {
+          const labels = { start: 'Start', stop: 'Stop', lunchStart: 'Lunch start' };
+          openTimeCalculator(idx, field, labels[field] || field, currentVal);
+        }
+      });
+      return;
+    }
+    const evt = (inp.type === 'checkbox') ? 'change' : 'input';
+    inp.addEventListener(evt, (e) => {
+      e.stopPropagation();
+      const idx = Number(inp.dataset.idx);
+      const field = inp.dataset.field;
+      const key = state.activeMonth;
+      const entry = state.months[key].days[idx];
+      if (inp.type === 'checkbox') entry[field] = inp.checked;
+      else entry[field] = inp.value;
+      saveData();
+      render();
+      // restore focus/caret for text-ish inputs after re-render
+      if (inp.type !== 'checkbox') {
+        requestAnimationFrame(() => {
+          const again = mainContainer.querySelector(`[data-field="${field}"][data-idx="${idx}"]`);
+          if (again) { again.focus(); }
+        });
+      }
+    });
+    inp.addEventListener('click', (e) => e.stopPropagation());
+  });
+  mainContainer.querySelectorAll('.clear-day').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.idx);
+      const key = state.activeMonth;
+      const dateStr = state.months[key].days[idx].dateStr;
+      state.months[key].days[idx] = { dateStr, start:'', stop:'', lunchStart:'', lunchDur:'', sparbevakare:false, holiday:false, km:'', notes:'' };
+      saveData();
+      render();
+    });
+  });
+}
+
+/* ---------- Modals ---------- */
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modalContent = document.getElementById('modalContent');
+function openModal(html) { modalContent.innerHTML = html; modalBackdrop.classList.add('show'); }
+function closeModal() { modalBackdrop.classList.remove('show'); modalContent.innerHTML=''; }
+modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+
+/* Calculator-style time entry: digits shift in from the right, like a
+   phone-number field — type "630" and it resolves to 06:30. */
+function openTimeCalculator(idx, field, label, currentVal) {
+  let raw = '';
+  let fresh = true;
+
+  const displayText = () => {
+    if (fresh) return currentVal || '--:--';
+    const windowed = raw.slice(-4).padStart(4, '0');
+    return windowed.slice(0, 2) + ':' + windowed.slice(2, 4);
+  };
+
+  openModal(`
+    <h3>${label}</h3>
+    <div class="calc-display" id="calcDisplay">${displayText()}</div>
+    <div class="calc-grid">
+      <button type="button" class="calc-key" data-k="7">7</button>
+      <button type="button" class="calc-key" data-k="8">8</button>
+      <button type="button" class="calc-key" data-k="9">9</button>
+      <button type="button" class="calc-key" data-k="4">4</button>
+      <button type="button" class="calc-key" data-k="5">5</button>
+      <button type="button" class="calc-key" data-k="6">6</button>
+      <button type="button" class="calc-key" data-k="1">1</button>
+      <button type="button" class="calc-key" data-k="2">2</button>
+      <button type="button" class="calc-key" data-k="3">3</button>
+      <button type="button" class="calc-key fn" data-k="clear">C</button>
+      <button type="button" class="calc-key" data-k="0">0</button>
+      <button type="button" class="calc-key fn" data-k="back">⌫</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="calcCancel">Cancel</button>
+      <button class="btn btn-primary" id="calcDone">Done</button>
+    </div>
+  `);
+
+  const disp = document.getElementById('calcDisplay');
+  modalContent.querySelectorAll('.calc-key').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.k;
+      if (k === 'clear') { raw = ''; fresh = false; }
+      else if (k === 'back') { fresh = false; raw = raw.slice(0, -1); }
+      else { fresh = false; raw += k; }
+      disp.textContent = displayText();
+    });
+  });
+  document.getElementById('calcCancel').onclick = closeModal;
+  document.getElementById('calcDone').onclick = () => {
+    let result;
+    if (fresh) {
+      result = currentVal || '';
+    } else if (raw === '') {
+      result = '';
+    } else {
+      const windowed = raw.slice(-4).padStart(4, '0');
+      const hh = Math.min(Math.max(parseInt(windowed.slice(0, 2), 10) || 0, 0), 23);
+      const mm = Math.min(Math.max(parseInt(windowed.slice(2, 4), 10) || 0, 0), 59);
+      result = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    }
+    const key = state.activeMonth;
+    state.months[key].days[idx][field] = result;
+    saveData();
+    closeModal();
+    render();
+  };
+}
+
+/* Calculator-style plain-number entry (used for km, and Investments'
+   "This month" / "Target"). Accumulates digits left-to-right with an
+   optional decimal point; first keypress replaces the existing value. */
+function openNumberCalculator(label, unit, currentVal, onConfirm) {
+  let raw = '';
+  let fresh = true;
+  const displayText = () => fresh
+    ? (currentVal !== undefined && currentVal !== null && currentVal !== '' ? String(currentVal) : '0')
+    : (raw === '' ? '0' : raw);
+  const unitHtml = unit ? `<span style="font-size:16px;color:var(--text-dim);margin-left:4px;">${unit}</span>` : '';
+
+  openModal(`
+    <h3>${label}</h3>
+    <div class="calc-display" id="calcDisplay">${displayText()}${unitHtml}</div>
+    <div class="calc-grid">
+      <button type="button" class="calc-key" data-k="7">7</button>
+      <button type="button" class="calc-key" data-k="8">8</button>
+      <button type="button" class="calc-key" data-k="9">9</button>
+      <button type="button" class="calc-key" data-k="4">4</button>
+      <button type="button" class="calc-key" data-k="5">5</button>
+      <button type="button" class="calc-key" data-k="6">6</button>
+      <button type="button" class="calc-key" data-k="1">1</button>
+      <button type="button" class="calc-key" data-k="2">2</button>
+      <button type="button" class="calc-key" data-k="3">3</button>
+      <button type="button" class="calc-key fn" data-k=".">.</button>
+      <button type="button" class="calc-key" data-k="0">0</button>
+      <button type="button" class="calc-key fn" data-k="back">⌫</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="calcCancel">Cancel</button>
+      <button class="btn btn-primary" id="calcDone">Done</button>
+    </div>
+  `);
+
+  const disp = document.getElementById('calcDisplay');
+  const refresh = () => { disp.innerHTML = displayText() + unitHtml; };
+  modalContent.querySelectorAll('.calc-key').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.k;
+      fresh = false;
+      if (k === 'back') raw = raw.slice(0, -1);
+      else if (k === '.') { if (!raw.includes('.')) raw += (raw === '' ? '0.' : '.'); }
+      else raw = (raw === '0') ? k : raw + k;
+      refresh();
+    });
+  });
+  document.getElementById('calcCancel').onclick = closeModal;
+  document.getElementById('calcDone').onclick = () => {
+    const result = fresh ? (currentVal != null ? currentVal : '') : raw;
+    closeModal();
+    onConfirm(result);
+  };
+}
+
+document.getElementById('addMonthBtn').addEventListener('click', () => {
+  const today = new Date();
+  const defVal = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  openModal(`
+    <h3>Add a month</h3>
+    <div class="field">
+      <label>Month</label>
+      <input type="month" id="newMonthInput" value="${defVal}">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancelAddMonth">Cancel</button>
+      <button class="btn btn-primary" id="confirmAddMonth">Create</button>
+    </div>
+  `);
+  document.getElementById('cancelAddMonth').onclick = closeModal;
+  document.getElementById('confirmAddMonth').onclick = () => {
+    const val = document.getElementById('newMonthInput').value; // "YYYY-MM"
+    if (!val) return;
+    const [y,m] = val.split('-').map(Number);
+    const key = monthKey(y,m);
+    if (!state.months[key]) {
+      state.months[key] = buildEmptyMonth(y,m);
+    }
+    ensurePortfolioMonthValues(key);
+    state.activeMonth = key;
+    openDayIndex = null;
+    saveData();
+    closeModal();
+    render();
+  };
+});
+
+document.getElementById('deleteMonthBtn').addEventListener('click', () => {
+  const key = state.activeMonth;
+  if (!key || !state.months[key]) return;
+  const [y,m] = key.split('-').map(Number);
+  openModal(`
+    <h3>Delete ${MONTH_NAMES[m-1]} ${y}?</h3>
+    <p style="color:var(--text-dim);font-size:13.5px;">This removes all entries for this month. This can't be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancelDel">Cancel</button>
+      <button class="btn btn-primary" style="background:var(--warn);color:#fff;" id="confirmDel">Delete</button>
+    </div>
+  `);
+  document.getElementById('cancelDel').onclick = closeModal;
+  document.getElementById('confirmDel').onclick = () => {
+    delete state.months[key];
+    if (state.portfolio.monthlyValues) delete state.portfolio.monthlyValues[key];
+    const keys = sortedMonthKeys();
+    state.activeMonth = keys.length ? keys[keys.length-1] : null;
+    openDayIndex = null;
+    saveData();
+    closeModal();
+    render();
+  };
+});
+
+document.getElementById('dataBtn').addEventListener('click', () => {
+  const json = JSON.stringify(state, null, 0);
+  openModal(`
+    <h3>Backup &amp; restore</h3>
+    <p style="color:var(--text-dim);font-size:13px;margin-bottom:8px;">Everything is stored only on this device. Copy this text somewhere safe to back it up, or paste a backup below to restore it.</p>
+    <textarea class="data-io" id="ioArea" readonly>${escapeHtml(json)}</textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-secondary" id="copyBtn">Copy</button>
+      <button class="btn btn-secondary" id="downloadBtn">Download .json</button>
+    </div>
+    <div class="field" style="margin-top:16px;">
+      <label>Restore from backup text</label>
+      <textarea class="data-io" id="restoreArea" placeholder="Paste backup JSON here" readonly-="false"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="closeData">Close</button>
+      <button class="btn btn-primary" id="restoreBtn">Restore</button>
+    </div>
+  `);
+  document.getElementById('closeData').onclick = closeModal;
+  document.getElementById('copyBtn').onclick = () => {
+    const area = document.getElementById('ioArea');
+    area.removeAttribute('readonly'); area.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    area.setAttribute('readonly', true);
+  };
+  document.getElementById('downloadBtn').onclick = () => {
+    const blob = new Blob([json], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'saferoad-lon-backup.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  document.getElementById('restoreBtn').onclick = () => {
+    const txt = document.getElementById('restoreArea').value.trim();
+    if (!txt) return;
+    try {
+      const parsed = JSON.parse(txt);
+      if (parsed && parsed.months) {
+        state = parsed;
+        openDayIndex = null;
+        saveData();
+        closeModal();
+        render();
+      } else {
+        alert('That does not look like a valid backup.');
+      }
+    } catch(e) {
+      alert('Could not read that backup text.');
+    }
+  };
+});
+
+/* ---------- Init ---------- */
+(function init() {
+  if (!state.activeMonth || !state.months[state.activeMonth]) {
+    const keys = sortedMonthKeys();
+    if (keys.length) {
+      state.activeMonth = keys[keys.length - 1];
+    } else {
+      const today = new Date();
+      const y = today.getFullYear(), m = today.getMonth() + 1;
+      state.months[monthKey(y,m)] = buildEmptyMonth(y,m);
+      state.activeMonth = monthKey(y,m);
+      ensurePortfolioMonthValues(state.activeMonth);
+    }
+    saveData();
+  }
+  render();
+})();
+
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
