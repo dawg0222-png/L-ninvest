@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saferoad-lon-v1';
+const CACHE_NAME = 'saferoad-lon-v2';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
@@ -18,6 +18,13 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Only manage this app's own files. Requests to other origins (the
+  // Finnhub price API, the exchange-rate API, etc.) must go straight to
+  // the network untouched — intercepting them and falling back to cached
+  // index.html on failure makes those API calls return the wrong content
+  // instead of a clear network error.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
+
   e.respondWith(
     caches.match(e.request).then((cached) => {
       if (cached) return cached;
