@@ -1106,10 +1106,30 @@ function renderPortfolio() {
     holdingsListEl.appendChild(priceNote);
   });
 
-  autoCard.querySelector('#finnhubKeyInput').addEventListener('change', (e) => {
+  // Defensive sync: read whatever's currently in the key/ticker/shares
+  // fields straight from the DOM into state. Called before Refresh/Apply
+  // so a fast tap-then-tap on mobile (which doesn't always fire a field's
+  // blur/change before the button's own click runs) can't read stale state.
+  function syncAutoStocksInputsFromDom() {
+    const keyInp = autoCard.querySelector('#finnhubKeyInput');
+    if (keyInp) state.portfolio.finnhubKey = keyInp.value.trim();
+    autoCard.querySelectorAll('[data-role="hticker"]').forEach(inp => {
+      const i = Number(inp.dataset.i);
+      if (state.portfolio.stockHoldings[i]) state.portfolio.stockHoldings[i].ticker = inp.value.trim().toUpperCase();
+    });
+    autoCard.querySelectorAll('[data-role="hshares"]').forEach(inp => {
+      const i = Number(inp.dataset.i);
+      if (state.portfolio.stockHoldings[i]) state.portfolio.stockHoldings[i].shares = inp.value;
+    });
+    saveData();
+  }
+
+  const finnhubKeyInputEl = autoCard.querySelector('#finnhubKeyInput');
+  finnhubKeyInputEl.addEventListener('input', (e) => {
     state.portfolio.finnhubKey = e.target.value.trim();
     saveData();
   });
+  finnhubKeyInputEl.addEventListener('change', () => { render(); });
   autoCard.querySelector('#toggleKeyVisibility').addEventListener('click', (e) => {
     const inp = autoCard.querySelector('#finnhubKeyInput');
     const showing = inp.type === 'text';
@@ -1117,35 +1137,38 @@ function renderPortfolio() {
     e.target.textContent = showing ? 'Show' : 'Hide';
   });
   autoCard.querySelector('#addHoldingBtn').addEventListener('click', () => {
+    syncAutoStocksInputsFromDom();
     state.portfolio.stockHoldings.push({ ticker: '', shares: '' });
     saveData();
     render();
   });
   autoCard.querySelector('#refreshPricesBtn').addEventListener('click', async () => {
+    syncAutoStocksInputsFromDom();
     await refreshStockPricesIfNeeded(true);
     render();
   });
   autoCard.querySelector('#applyStocksBtn').addEventListener('click', () => {
+    syncAutoStocksInputsFromDom();
     state.portfolio.monthlyValues[key] = state.portfolio.monthlyValues[key] || {};
     state.portfolio.monthlyValues[key].stocks = Math.round(stockHoldingsTotals().totalSek);
     saveData();
     render();
   });
   autoCard.querySelectorAll('[data-role="hticker"]').forEach(inp => {
-    inp.addEventListener('change', (e) => {
+    inp.addEventListener('input', (e) => {
       const i = Number(e.target.dataset.i);
       state.portfolio.stockHoldings[i].ticker = e.target.value.trim().toUpperCase();
       saveData();
-      render();
     });
+    inp.addEventListener('change', () => { render(); });
   });
   autoCard.querySelectorAll('[data-role="hshares"]').forEach(inp => {
-    inp.addEventListener('change', (e) => {
+    inp.addEventListener('input', (e) => {
       const i = Number(e.target.dataset.i);
       state.portfolio.stockHoldings[i].shares = e.target.value;
       saveData();
-      render();
     });
+    inp.addEventListener('change', () => { render(); });
   });
   autoCard.querySelectorAll('[data-role="hremove"]').forEach(btn => {
     btn.addEventListener('click', (e) => {
