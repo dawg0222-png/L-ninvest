@@ -567,10 +567,24 @@ async function refreshStockPricesIfNeeded(force) {
       // through your own dedicated Cloudflare Worker (set up as a personal
       // CORS proxy) — it fetches the Finnhub URL server-side and hands the
       // response back with the right headers. Nobody else shares this proxy.
+      // A cache-busting timestamp + cache:'no-store' stop the browser from
+      // silently reusing a stale/error response for what looks like an
+      // identical URL on repeated taps of Refresh now.
       const finnhubUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${encodeURIComponent(apiKey)}`;
-      const res = await fetch(`https://finnhub-proxy.dawg0222.workers.dev/?url=${encodeURIComponent(finnhubUrl)}`);
+      const proxyUrl = `https://finnhub-proxy.dawg0222.workers.dev/?url=${encodeURIComponent(finnhubUrl)}&_=${Date.now()}`;
+      let res;
+      try {
+        res = await fetch(proxyUrl, { cache: 'no-store' });
+      } catch (fetchErr) {
+        // Network-level failure (never reached a server at all): surface
+        // the exact error type/name, not just a generic message, plus the
+        // request URL with the key masked, so we can see precisely what
+        // was attempted instead of guessing.
+        const masked = proxyUrl.replace(/token%3D[^%&]+/, 'token%3D***');
+        throw new Error(`Network error reaching the proxy for ${t}: ${fetchErr.name || 'Error'}: ${fetchErr.message}. URL: ${masked}`);
+      }
       if (!res.ok) {
-        throw new Error(`Price lookup failed for ${t}: HTTP ${res.status} (proxy or Finnhub may be temporarily unavailable).`);
+        throw new Error(`Price lookup failed for ${t}: HTTP ${res.status} ${res.statusText || ''} (proxy or Finnhub may be temporarily unavailable).`);
       }
       const data = await res.json();
       if (data && data.error) throw new Error(`Finnhub error for ${t}: ${data.error}`);
@@ -580,7 +594,7 @@ async function refreshStockPricesIfNeeded(force) {
       if (!price) throw new Error(`No price returned for "${t}" — check the ticker symbol (e.g. non-US stocks need a suffix like ERIC-B.ST), or check the API key is correct.`);
       prices[t] = price;
     }
-    const fxRes = await fetch('https://api.frankfurter.app/latest?from=USD&to=SEK');
+    const fxRes = await fetch(`https://api.frankfurter.app/latest?from=USD&to=SEK&_=${Date.now()}`, { cache: 'no-store' });
     if (!fxRes.ok) throw new Error(`Exchange-rate lookup failed (HTTP ${fxRes.status}).`);
     const fxData = await fxRes.json();
     const fx = (fxData && fxData.rates && fxData.rates.SEK) || (state.portfolio.stocksCache.fx || null);
