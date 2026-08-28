@@ -564,11 +564,11 @@ async function refreshStockPricesIfNeeded(force) {
   try {
     for (const t of tickers) {
       // Finnhub doesn't allow direct calls from a browser, so this routes
-      // through allorigins.win, a free public CORS proxy — it fetches the
-      // Finnhub URL server-side and hands the response back to us with the
-      // right headers. Your API key travels through that proxy in transit.
+      // through your own dedicated Cloudflare Worker (set up as a personal
+      // CORS proxy) — it fetches the Finnhub URL server-side and hands the
+      // response back with the right headers. Nobody else shares this proxy.
       const finnhubUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${encodeURIComponent(apiKey)}`;
-      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(finnhubUrl)}`);
+      const res = await fetch(`https://finnhub-proxy.dawg0222.workers.dev/?url=${encodeURIComponent(finnhubUrl)}`);
       if (!res.ok) {
         throw new Error(`Price lookup failed for ${t}: HTTP ${res.status} (proxy or Finnhub may be temporarily unavailable).`);
       }
@@ -1060,7 +1060,7 @@ function renderPortfolio() {
         <input type="password" id="finnhubKeyInput" placeholder="Paste your free Finnhub API key" value="${escapeHtml(state.portfolio.finnhubKey || '')}" style="flex:1;">
         <button type="button" id="toggleKeyVisibility" style="flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--text-dim);border-radius:9px;padding:0 12px;font-size:13px;font-weight:600;">Show</button>
       </div>
-      <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Free key at finnhub.io/register. Stored only on this device. Requests route through a public CORS proxy (allorigins.win) since Finnhub blocks direct browser calls — your key passes through it in transit. Non-US tickers need the exchange suffix, e.g. ERIC-B.ST.</div>
+      <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Free key at finnhub.io/register. Stored only on this device. Requests route through your own private Cloudflare Worker proxy (not a shared public one) since Finnhub blocks direct browser calls. Non-US tickers need the exchange suffix, e.g. ERIC-B.ST.</div>
     </div>
     <div id="holdingsList"></div>
     <button type="button" class="clear-day" id="addHoldingBtn" style="color:var(--text);border-color:var(--border);margin-top:2px;">+ Add holding</button>
