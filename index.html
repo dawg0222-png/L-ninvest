@@ -564,7 +564,13 @@ async function refreshStockPricesIfNeeded(force) {
   if (tickers.length === 0) { lastStockFetchError = 'No ticker symbols entered.'; return false; }
   const prices = {};
   try {
+    let first = true;
     for (const t of tickers) {
+      // Small pause between tickers so several calls in one refresh don't
+      // burst past Finnhub's per-second rate limit even while comfortably
+      // under its per-minute one.
+      if (!first) await new Promise(r => setTimeout(r, 400));
+      first = false;
       // Finnhub doesn't allow direct calls from a browser, so this routes
       // through your own dedicated Cloudflare Worker (set up as a personal
       // CORS proxy) — it fetches the Finnhub URL server-side and hands the
@@ -1153,13 +1159,23 @@ function renderPortfolio() {
     saveData();
     render();
   });
-  autoCard.querySelector('#refreshPricesBtn').addEventListener('click', async () => {
+  autoCard.querySelector('#refreshPricesBtn').addEventListener('click', async (e) => {
     // Cooldown guard: ignore rapid re-clicks that could otherwise burn
     // through Finnhub's free-tier per-minute rate limit.
     if (Date.now() - lastRefreshAttemptAt < 20000) { render(); return; }
     lastRefreshAttemptAt = Date.now();
-    syncAutoStocksInputsFromDom();
-    await refreshStockPricesIfNeeded(true);
+    // Immediate feedback the moment it's tapped, before the fetch sequence
+    // (which can take a few seconds with several tickers) finishes.
+    e.target.disabled = true;
+    e.target.textContent = 'Checking…';
+    try {
+      syncAutoStocksInputsFromDom();
+      await refreshStockPricesIfNeeded(true);
+    } catch (err) {
+      // Guarantees a visible result even if something unexpected throws
+      // outside refreshStockPricesIfNeeded's own try/catch.
+      lastStockFetchError = (err && err.message) ? err.message : 'Unexpected error refreshing prices.';
+    }
     render();
   });
   autoCard.querySelector('#applyStocksBtn').addEventListener('click', () => {
