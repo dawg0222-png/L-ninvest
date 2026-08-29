@@ -1061,6 +1061,12 @@ function renderPortfolio() {
   const { totalUsd, fx, totalSek } = stockHoldingsTotals();
 
   const cooldownRemaining = Math.max(0, 20 - Math.floor((Date.now() - lastRefreshAttemptAt) / 1000));
+  if (cooldownRemaining > 0) {
+    // Automatically re-render once the cooldown actually expires, so the
+    // button visibly re-enables itself instead of looking permanently
+    // stuck until some unrelated interaction happens to trigger a render.
+    setTimeout(() => { if (state.activeTab === 'portfolio') render(); }, (cooldownRemaining + 1) * 1000);
+  }
   const hasKey = !!(state.portfolio.finnhubKey || '').trim();
 
   const autoTitle = document.createElement('div');
@@ -1088,7 +1094,7 @@ function renderPortfolio() {
       <div>Priced <b>${cache.date || 'never'}</b></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
-      <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;" ${cooldownRemaining > 0 ? 'disabled' : ''}>${cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Refresh now'}</button>
+      <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;${cooldownRemaining > 0 ? 'opacity:0.45;' : ''}" ${cooldownRemaining > 0 ? 'disabled' : ''}>${cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Refresh now'}</button>
       <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use as this month's Stocks value</button>
     </div>
     ${!hasKey ? '<div style="margin-top:10px;font-size:12px;color:var(--warn);">Add an API key above to enable price fetching.</div>' : ''}
