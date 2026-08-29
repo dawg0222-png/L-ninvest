@@ -262,6 +262,7 @@ const RATE_WEEKEND = 379;      // weekend/holiday
 const RATE_WEEKEND_OT = 402;   // weekend/holiday overtime (after 8h)
 const RATE_SPARBEVAKARE = 10;  // per hour worked, on top
 const RATE_KM = 2.5;           // tax-free car mileage allowance, per km
+const RATE_AKASSA = 86;        // A-Kassa payout, per hour, already after tax
 
 // [minSalaryOfBracket, tax] sorted ascending — approximate-match lookup
 const TAX_TABLE = [[1, 0.0], [2001, 150.0], [2101, 152.0], [2201, 162.0], [2301, 173.0], [2401, 183.0], [2501, 194.0], [2601, 204.0], [2701, 215.0], [2801, 217.0], [2901, 227.0], [3001, 238.0], [3101, 248.0], [3201, 259.0], [3301, 269.0], [3401, 272.0], [3501, 282.0], [3601, 293.0], [3701, 303.0], [3801, 314.0], [3901, 324.0], [4001, 326.0], [4101, 337.0], [4201, 347.0], [4301, 358.0], [4401, 368.0], [4501, 379.0], [4601, 381.0], [4701, 391.0], [4801, 402.0], [4901, 412.0], [5001, 422.0], [5101, 432.0], [5201, 442.0], [5301, 444.0], [5401, 454.0], [5501, 464.0], [5601, 474.0], [5701, 484.0], [5801, 494.0], [5901, 496.0], [6001, 506.0], [6101, 516.0], [6201, 526.0], [6301, 536.0], [6401, 546.0], [6501, 548.0], [6601, 558.0], [6701, 568.0], [6801, 578.0], [6901, 588.0], [7001, 598.0], [7101, 619.0], [7201, 639.0], [7301, 660.0], [7401, 681.0], [7501, 701.0], [7601, 722.0], [7701, 743.0], [7801, 763.0], [7901, 784.0], [8001, 804.0], [8101, 825.0], [8201, 846.0], [8301, 866.0], [8401, 887.0], [8501, 908.0], [8601, 928.0], [8701, 949.0], [8801, 970.0], [8901, 990.0], [9001, 1011.0], [9101, 1032.0], [9201, 1052.0], [9301, 1073.0], [9401, 1093.0], [9501, 1114.0], [9601, 1135.0], [9701, 1155.0], [9801, 1176.0], [9901, 1196.0], [10001, 1217.0], [10101, 1238.0], [10201, 1258.0], [10301, 1279.0], [10401, 1300.0], [10501, 1320.0], [10601, 1341.0], [10701, 1362.0], [10801, 1382.0], [10901, 1403.0], [11001, 1423.0], [11101, 1444.0], [11201, 1465.0], [11301, 1485.0], [11401, 1506.0], [11501, 1527.0], [11601, 1547.0], [11701, 1568.0], [11801, 1589.0], [11901, 1609.0], [12001, 1630.0], [12101, 1650.0], [12201, 1671.0], [12301, 1692.0], [12401, 1712.0], [12501, 1733.0], [12601, 1754.0], [12701, 1774.0], [12801, 1795.0], [12901, 1815.0], [13001, 1836.0], [13101, 1857.0], [13201, 1877.0], [13301, 1898.0], [13401, 1919.0], [13501, 1940.0], [13601, 1960.0], [13701, 1980.0], [13801, 2000.0], [13901, 2020.0], [14001, 2040.0], [14101, 2060.0], [14201, 2080.0], [14301, 2100.0], [14401, 2120.0], [14501, 2140.0], [14601, 2159.0], [14701, 2179.0], [14801, 2199.0], [14901, 2219.0], [15001, 2239.0], [15101, 2259.0], [15201, 2279.0], [15301, 2299.0], [15401, 2319.0], [15501, 2339.0], [15601, 2359.0], [15701, 2379.0], [15801, 2399.0], [15901, 2419.0], [16001, 2443.0], [16101, 2467.0], [16201, 2492.0], [16301, 2516.0], [16401, 2540.0], [16501, 2565.0], [16601, 2589.0], [16701, 2613.0], [16801, 2637.0], [16901, 2662.0], [17001, 2686.0], [17101, 2710.0], [17201, 2735.0], [17301, 2759.0], [17401, 2783.0], [17501, 2808.0], [17601, 2832.0], [17701, 2856.0], [17801, 2880.0], [17901, 2905.0], [18001, 2929.0], [18101, 2953.0], [18201, 2978.0], [18301, 3002.0], [18401, 3026.0], [18501, 3051.0], [18601, 3075.0], [18701, 3099.0], [18801, 3123.0], [18901, 3148.0], [19001, 3172.0], [19101, 3196.0], [19201, 3221.0], [19301, 3245.0], [19401, 3269.0], [19501, 3294.0], [19601, 3318.0], [19701, 3342.0], [19801, 3366.0], [19901, 3391.0], [20001, 3439.0], [20201, 3488.0], [20401, 3537.0], [20601, 3585.0], [20801, 3634.0], [21001, 3682.0], [21201, 3731.0], [21401, 3780.0], [21601, 3828.0], [21801, 3877.0], [22001, 3925.0], [22201, 3974.0], [22401, 4023.0], [22601, 4071.0], [22801, 4120.0], [23001, 4170.0], [23201, 4220.0], [23401, 4270.0], [23601, 4320.0], [23801, 4371.0], [24001, 4421.0], [24201, 4471.0], [24401, 4521.0], [24601, 4572.0], [24801, 4622.0], [25001, 4672.0], [25201, 4722.0], [25401, 4773.0], [25601, 4823.0], [25801, 4873.0], [26001, 4923.0], [26201, 4974.0], [26401, 5024.0], [26601, 5074.0], [26801, 5124.0], [27001, 5175.0], [27201, 5225.0], [27401, 5275.0], [27601, 5325.0], [27801, 5376.0], [28001, 5426.0], [28201, 5476.0], [28401, 5526.0], [28601, 5577.0], [28801, 5627.0], [29001, 5677.0], [29201, 5727.0], [29401, 5778.0], [29601, 5828.0], [29801, 5878.0], [30001, 5928.0], [30201, 5979.0], [30401, 6029.0], [30601, 6079.0], [30801, 6129.0], [31001, 6180.0], [31201, 6230.0], [31401, 6280.0], [31601, 6330.0], [31801, 6381.0], [32001, 6431.0], [32201, 6481.0], [32401, 6531.0], [32601, 6582.0], [32801, 6632.0], [33001, 6682.0], [33201, 6732.0], [33401, 6783.0], [33601, 6833.0], [33801, 6883.0], [34001, 6933.0], [34201, 6984.0], [34401, 7034.0], [34601, 7084.0], [34801, 7134.0], [35001, 7185.0], [35201, 7235.0], [35401, 7285.0], [35601, 7335.0], [35801, 7386.0], [36001, 7436.0], [36201, 7486.0], [36401, 7536.0], [36601, 7587.0], [36801, 7637.0], [37001, 7687.0], [37201, 7737.0], [37401, 7788.0], [37601, 7838.0], [37801, 7888.0], [38001, 7938.0], [38201, 7989.0], [38401, 8039.0], [38601, 8089.0], [38801, 8139.0], [39001, 8189.0], [39201, 8239.0], [39401, 8289.0], [39601, 8339.0], [39801, 8402.0], [40001, 8468.0], [40201, 8534.0], [40401, 8600.0], [40601, 8666.0], [40801, 8732.0], [41001, 8798.0], [41201, 8864.0], [41401, 8930.0], [41601, 8996.0], [41801, 9062.0], [42001, 9128.0], [42201, 9194.0], [42401, 9260.0], [42601, 9326.0], [42801, 9392.0], [43001, 9458.0], [43201, 9524.0], [43401, 9590.0], [43601, 9656.0], [43801, 9722.0], [44001, 9788.0], [44201, 9854.0], [44401, 9920.0], [44601, 9986.0], [44801, 10052.0], [45001, 10118.0], [45201, 10184.0], [45401, 10250.0], [45601, 10316.0], [45801, 10382.0], [46001, 10448.0], [46201, 10514.0], [46401, 10580.0], [46601, 10646.0], [46801, 10712.0], [47001, 10778.0], [47201, 10844.0], [47401, 10910.0], [47601, 10976.0], [47801, 11042.0], [48001, 11108.0], [48201, 11174.0], [48401, 11240.0], [48601, 11306.0], [48801, 11372.0], [49001, 11438.0], [49201, 11504.0], [49401, 11570.0], [49601, 11636.0], [49801, 11702.0], [50001, 11768.0], [50201, 11834.0], [50401, 11900.0], [50601, 11966.0], [50801, 12032.0], [51001, 12098.0], [51201, 12164.0], [51401, 12230.0], [51601, 12296.0], [51801, 12362.0], [52001, 12428.0], [52201, 12494.0], [52401, 12560.0], [52601, 12626.0], [52801, 12692.0], [53001, 12758.0], [53201, 12824.0], [53401, 12890.0], [53601, 12956.0], [53801, 13022.0], [54001, 13088.0], [54201, 13154.0], [54401, 13220.0], [54601, 13286.0], [54801, 13352.0], [55001, 13451.0], [55201, 13557.0], [55401, 13663.0], [55601, 13769.0], [55801, 13875.0], [56001, 13981.0], [56201, 14087.0], [56401, 14193.0], [56601, 14299.0], [56801, 14405.0], [57001, 14511.0], [57201, 14617.0], [57401, 14723.0], [57601, 14829.0], [57801, 14935.0], [58001, 15041.0], [58201, 15147.0], [58401, 15253.0], [58601, 15359.0], [58801, 15465.0], [59001, 15571.0], [59201, 15677.0], [59401, 15783.0], [59601, 15889.0], [59801, 15995.0], [60001, 16101.0], [60201, 16207.0], [60401, 16313.0], [60601, 16419.0], [60801, 16525.0], [61001, 16631.0], [61201, 16737.0], [61401, 16843.0], [61601, 16949.0], [61801, 17055.0], [62001, 17161.0], [62201, 17267.0], [62401, 17373.0], [62601, 17479.0], [62801, 17585.0], [63001, 17691.0], [63201, 17797.0], [63401, 17903.0], [63601, 18009.0], [63801, 18115.0], [64001, 18221.0], [64201, 18327.0], [64401, 18433.0], [64601, 18539.0], [64801, 18645.0], [65001, 18751.0], [65201, 18857.0], [65401, 18963.0], [65601, 19069.0], [65801, 19175.0], [66001, 19281.0], [66201, 19387.0], [66401, 19493.0], [66601, 19599.0], [66801, 19705.0], [67001, 19811.0], [67201, 19917.0], [67401, 20023.0], [67601, 20129.0], [67801, 20235.0], [68001, 20341.0], [68201, 20447.0], [68401, 20553.0], [68601, 20659.0], [68801, 20765.0], [69001, 20871.0], [69201, 20977.0], [69401, 21083.0], [69601, 21189.0], [69801, 21295.0], [70001, 21401.0]];
@@ -320,7 +321,9 @@ function computeDay(entry, dayOffset) {
       baseHrs: 0, eveningHrs: 0, nightHrs: 0,
       weekdayOtHrs: 0, weekendHrs: 0, weekendOtHrs: 0,
       sparbevakareAdd: 0, km: entry.km ? Number(entry.km) : 0,
-      carAllowance: (entry.km ? Number(entry.km) : 0) * RATE_KM
+      carAllowance: (entry.km ? Number(entry.km) : 0) * RATE_KM,
+      akassaHours: entry.akassaHours ? Number(entry.akassaHours) : 0,
+      akassaPay: (entry.akassaHours ? Number(entry.akassaHours) : 0) * RATE_AKASSA
     };
   }
 
@@ -439,6 +442,10 @@ function computeDay(entry, dayOffset) {
   const km = entry.km ? Number(entry.km) : 0;
   const carAllowance = km * RATE_KM;
 
+  // A-Kassa — also independent of worked hours/rates, already after tax
+  const akassaHours = entry.akassaHours ? Number(entry.akassaHours) : 0;
+  const akassaPay = akassaHours * RATE_AKASSA;
+
   return {
     hasData: true, weekday: O, isWeekendOrHoliday: W,
     hoursWorked: V,
@@ -447,7 +454,8 @@ function computeDay(entry, dayOffset) {
     baseHrs: AN, eveningHrs: AK, nightHrs: AL,
     weekdayOtHrs: AO, weekendHrs: AP, weekendOtHrs: AQ,
     sparbevakareAdd: AU,
-    km, carAllowance
+    km, carAllowance,
+    akassaHours, akassaPay
   };
 }
 
@@ -463,7 +471,7 @@ function buildEmptyMonth(year, month) {
   const days = [];
   for (let d = 1; d <= n; d++) {
     const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    days.push({ dateStr, start:'', stop:'', lunchStart:'', lunchDur:'', sparbevakare:false, holiday:false, km:'', notes:'' });
+    days.push({ dateStr, start:'', stop:'', lunchStart:'', lunchDur:'', sparbevakare:false, holiday:false, km:'', akassaHours:'', notes:'' });
   }
   return { year, month, days };
 }
@@ -483,6 +491,8 @@ function saveData() {
 
 let state = loadData();
 if (!state.investments) state.investments = { targets: {}, monthly: {} };
+if (!state.investments.contributed) state.investments.contributed = {};
+if (!state.investments.lastAdded) state.investments.lastAdded = {};
 if (!state.portfolio) state.portfolio = { values: {}, monthlyValues: {}, stocks: '', apartmentSale: { value: '', toIndex: '', toCash: '' } };
 if (!state.portfolio.apartmentSale) state.portfolio.apartmentSale = { value: '', toIndex: '', toCash: '' };
 if (!state.portfolio.monthlyValues) state.portfolio.monthlyValues = {};
@@ -654,29 +664,23 @@ function stockHoldingsTotals() {
   return { totalUsd, fx, totalSek: totalUsd * fx };
 }
 
-/* Cumulative amount put into a category across every month up to and
-   including `uptoKey` ("YYYY-MM" strings sort correctly). This is what
-   "Nuvarande" shows — it's derived, never entered directly, and it
-   naturally carries forward as new months are added. */
+/* Cumulative amount actually added to a category via "Add now" — this
+   drives the Target progress bar. */
 function cumulativeContribution(catKey, uptoKey) {
-  let sum = 0;
-  Object.keys(state.investments.monthly).forEach(mk => {
-    if (mk <= uptoKey) {
-      sum += Number(state.investments.monthly[mk] && state.investments.monthly[mk][catKey]) || 0;
-    }
-  });
-  return sum;
+  // "This month" now resets to 0 each time "Add now" is clicked (the money
+  // moves into Portfolio's Value instead), so summing the monthly entries
+  // directly would lose history the moment a month gets claimed. Target
+  // progress instead tracks off the permanent running total recorded at
+  // each "Add now" click — see state.investments.contributed.
+  return totalContribution(catKey);
 }
 
-/* All-time total put into a category across every tracked month
-   (no cutoff) — what the Portfolio tab's "Nuvarande" column carries
-   over from Investments. */
+/* All-time total actually added to a category via "Add now" in the
+   Investing tab — what Target progress is measured against. Recorded
+   permanently at click time, independent of "This month" (which resets
+   to 0 right after). */
 function totalContribution(catKey) {
-  let sum = 0;
-  Object.keys(state.investments.monthly).forEach(mk => {
-    sum += Number(state.investments.monthly[mk] && state.investments.monthly[mk][catKey]) || 0;
-  });
-  return sum;
+  return Number(state.investments.contributed && state.investments.contributed[catKey]) || 0;
 }
 
 /* ---------- Rendering ---------- */
@@ -711,7 +715,7 @@ function fmtHrs(n) {
 
 function computeMonthTotals(monthData) {
   const computed = monthData.days.map((entry, i) => computeDay(entry, i));
-  let totalHours=0, totalOT=0, totalEarned=0, totalKm=0, totalCarAllowance=0;
+  let totalHours=0, totalOT=0, totalEarned=0, totalKm=0, totalCarAllowance=0, totalAkassaHours=0, totalAkassaPay=0;
   let sumBase=0, sumEvening=0, sumNight=0, sumWeekdayOT=0, sumWeekend=0, sumWeekendOT=0, sumSpar=0;
   computed.forEach(c => {
     totalHours += c.hoursWorked;
@@ -719,14 +723,16 @@ function computeMonthTotals(monthData) {
     totalEarned += c.dayRate;
     totalKm += c.km;
     totalCarAllowance += c.carAllowance;
+    totalAkassaHours += c.akassaHours;
+    totalAkassaPay += c.akassaPay;
     sumBase += c.baseHrs; sumEvening += c.eveningHrs; sumNight += c.nightHrs;
     sumWeekdayOT += c.weekdayOtHrs; sumWeekend += c.weekendHrs; sumWeekendOT += c.weekendOtHrs;
     sumSpar += c.sparbevakareAdd;
   });
   const tax = lookupTax(totalEarned);
   const netto = totalEarned > 0 ? (totalEarned - tax) : 0;
-  const payout = netto + totalCarAllowance;
-  return { computed, totalHours, totalOT, totalEarned, totalKm, totalCarAllowance,
+  const payout = netto + totalCarAllowance + totalAkassaPay;
+  return { computed, totalHours, totalOT, totalEarned, totalKm, totalCarAllowance, totalAkassaHours, totalAkassaPay,
            sumBase, sumEvening, sumNight, sumWeekdayOT, sumWeekend, sumWeekendOT, sumSpar,
            tax, netto, payout };
 }
@@ -743,13 +749,18 @@ function renderMain() {
   const [y,m] = key.split('-').map(Number);
   topSub.textContent = MONTH_NAMES[m-1] + ' ' + y;
 
-  const { computed, totalHours, totalOT, totalEarned, totalKm, totalCarAllowance,
+  const { computed, totalHours, totalOT, totalEarned, totalKm, totalCarAllowance, totalAkassaHours, totalAkassaPay,
           sumBase, sumEvening, sumNight, sumWeekdayOT, sumWeekend, sumWeekendOT, sumSpar,
           tax, netto, payout } = computeMonthTotals(monthData);
 
   const summary = document.createElement('div');
   summary.className = 'summary-card';
   summary.innerHTML = `
+    ${totalAkassaHours > 0 ? `
+    <div class="summary-mini" style="margin-bottom:10px;background:rgba(63,167,160,0.08);border-color:rgba(63,167,160,0.35);">
+      <div class="l">A-Kassa (${totalAkassaHours % 1 === 0 ? totalAkassaHours.toFixed(0) : totalAkassaHours.toFixed(2)} h × ${RATE_AKASSA} kr)</div>
+      <div class="v" style="font-size:19px;color:#3fa7a0;">${fmtSEK(totalAkassaPay)}</div>
+    </div>` : ''}
     <div class="summary-top">
       <div>
         <div class="label">Total earned</div>
@@ -765,7 +776,7 @@ function renderMain() {
       <div class="summary-mini"><div class="l">Car allowance (tax-free)</div><div class="v">${fmtSEK(totalCarAllowance)}</div></div>
     </div>
     <div class="summary-mini" style="margin-top:10px;background:rgba(76,195,138,0.08);border-color:rgba(76,195,138,0.35);">
-      <div class="l">Total payout (netto + car allowance)</div>
+      <div class="l">Total payout (netto + car allowance + A-Kassa)</div>
       <div class="v" style="font-size:19px;color:var(--good);">${fmtSEK(payout)}</div>
     </div>
     <div class="breakdown">
@@ -777,6 +788,7 @@ function renderMain() {
       <div class="breakdown-row"><span>Weekend/holiday OT (${RATE_WEEKEND_OT} kr/h)</span><b>${fmtHrs(sumWeekendOT)}</b></div>
       <div class="breakdown-row"><span>Sparbevakare addition</span><b>${fmtSEK(sumSpar)}</b></div>
       <div class="breakdown-row"><span>Car allowance (${RATE_KM} kr/km, tax-free)</span><b>${fmtSEK(totalCarAllowance)}</b></div>
+      <div class="breakdown-row"><span>A-Kassa (${RATE_AKASSA} kr/h)</span><b>${fmtSEK(totalAkassaPay)}</b></div>
     </div>
   `;
   mainContainer.appendChild(summary);
@@ -799,9 +811,10 @@ function renderMain() {
     card.className = 'day-card' + (c.isWeekendOrHoliday ? ' weekend' : '') + (c.hasData ? ' has-data' : '') + (openDayIndex === i ? ' open' : '');
 
     const carLine = c.carAllowance > 0.001 ? `<div style="color:var(--blue);font-weight:600;font-size:12px;">🚗 ${fmtSEK(c.carAllowance)}</div>` : '';
+    const akassaLine = c.akassaPay > 0.001 ? `<div style="color:#3fa7a0;font-weight:600;font-size:12px;">A-Kassa ${fmtSEK(c.akassaPay)}</div>` : '';
     const summaryHtml = c.hasData
-      ? `<div class="hrs">${fmtHrs(c.hoursWorked)}${c.overtimeHours>0.001?` <span style="color:var(--text-dim);font-weight:500;">(+${fmtHrs(c.overtimeHours)} OT)</span>`:''}</div><div class="rate">${fmtSEK(c.dayRate)}</div>${carLine}`
-      : (c.carAllowance > 0.001 ? carLine : `<div class="empty">—</div>`);
+      ? `<div class="hrs">${fmtHrs(c.hoursWorked)}${c.overtimeHours>0.001?` <span style="color:var(--text-dim);font-weight:500;">(+${fmtHrs(c.overtimeHours)} OT)</span>`:''}</div><div class="rate">${fmtSEK(c.dayRate)}</div>${carLine}${akassaLine}`
+      : ((c.carAllowance > 0.001 || c.akassaPay > 0.001) ? `${carLine}${akassaLine}` : `<div class="empty">—</div>`);
 
     card.innerHTML = `
       <div class="day-head" data-idx="${i}">
@@ -831,12 +844,13 @@ function renderMain() {
         </div>
         <div class="field-row">
           <div class="field"><label>Car km driven (tax-free, ${RATE_KM} kr/km)</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="e.g. 20" data-field="km" data-idx="${i}" value="${entry.km||''}"></div>
+          <div class="field"><label>A-Kassa hours (${RATE_AKASSA} kr/h)</label><input type="number" inputmode="decimal" min="0" step="0.5" placeholder="e.g. 8" data-field="akassaHours" data-idx="${i}" value="${entry.akassaHours||''}"></div>
         </div>
         <div class="notes-row field">
           <label>Notes</label>
           <input type="text" data-field="notes" data-idx="${i}" value="${entry.notes ? escapeHtml(entry.notes) : ''}" placeholder="Optional">
         </div>
-        ${(c.hasData || c.carAllowance > 0.001) ? `
+        ${(c.hasData || c.carAllowance > 0.001 || c.akassaPay > 0.001) ? `
         <div class="day-compute">
           ${c.hasData ? `
           <div>Base hrs: <b>${fmtHrs(c.baseHrs)}</b></div>
@@ -846,6 +860,7 @@ function renderMain() {
           <div>Weekday OT: <b>${fmtHrs(c.weekdayOtHrs)}</b></div>
           <div>Sparb. add: <b>${fmtSEK(c.sparbevakareAdd)}</b></div>` : ''}
           ${c.carAllowance > 0.001 ? `<div>Car allowance: <b>${fmtSEK(c.carAllowance)}</b></div>` : ''}
+          ${c.akassaPay > 0.001 ? `<div>A-Kassa: <b>${fmtSEK(c.akassaPay)}</b></div>` : ''}
         </div>` : ''}
         <button class="clear-day" data-idx="${i}">Clear this day</button>
       </div>
@@ -878,7 +893,7 @@ function renderInvest() {
   const [y,m] = key.split('-').map(Number);
   topSub.textContent = 'Investments — ' + MONTH_NAMES[m-1] + ' ' + y;
 
-  const { netto, totalCarAllowance, payout } = computeMonthTotals(state.months[key]);
+  const { netto, totalCarAllowance, totalAkassaPay, payout } = computeMonthTotals(state.months[key]);
   const monthly = state.investments.monthly[key] || {};
   let allocated = 0;
   CATEGORIES.forEach(c => { allocated += Number(monthly[c.key]) || 0; });
@@ -893,6 +908,7 @@ function renderInvest() {
     </div>
     <div class="invest-row"><span>Netto</span><b>${fmtSEK(netto)}</b></div>
     <div class="invest-row"><span>Car allowance (tax-free)</span><b>${fmtSEK(totalCarAllowance)}</b></div>
+    ${totalAkassaPay > 0 ? `<div class="invest-row"><span>A-Kassa</span><b>${fmtSEK(totalAkassaPay)}</b></div>` : ''}
     <div class="invest-row"><span>Allocated this month</span><b>${fmtSEK(allocated)}</b></div>
     <div class="invest-row"><span>Remaining</span><b style="${remaining<0?'color:var(--warn);':''}">${fmtSEK(remaining)}</b></div>
   `;
@@ -924,7 +940,7 @@ function renderInvest() {
       <div class="cat-fields">
         <div class="field"><label>This month</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-cat="${cat.key}" data-role="monthly" value="${monthlyVal}"></div>
         <div class="field"><label>Target</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-cat="${cat.key}" data-role="target" value="${t.target != null ? t.target : ''}"></div>
-        <div class="field"><label>Nuvarande</label><div class="cat-current">${fmtSEK(current)}</div></div>
+        <div class="field"><label>&nbsp;</label><button type="button" class="btn btn-primary" data-role="invest-add-now" data-cat="${cat.key}" style="width:100%;padding:10px 0;">Add now</button></div>
       </div>
     `;
     mainContainer.appendChild(c);
@@ -932,7 +948,7 @@ function renderInvest() {
 
   const note = document.createElement('div');
   note.className = 'rates-note';
-  note.innerHTML = `<b>This month</b> = how much of this month's salary you're putting toward each goal. <b>Nuvarande</b> is calculated automatically — the running total of everything you've put in across every month so far, compared against your <b>Target</b>. It carries forward on its own as you add new months; Target can be changed anytime.`;
+  note.innerHTML = `<b>This month</b> = how much of this month's salary you're putting toward each goal. Tap <b>Add now</b> once you've actually moved it — that adds the amount into this category's Value in the Portfolio tab, resets "This month" back to 0, and counts toward your <b>Target</b> progress (shown in the bar above).`;
   mainContainer.appendChild(note);
 
   mainContainer.querySelectorAll('[data-role="monthly"]').forEach(inp => {
@@ -961,6 +977,34 @@ function renderInvest() {
       });
     });
   });
+
+  mainContainer.querySelectorAll('[data-role="invest-add-now"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const catKey = btn.dataset.cat;
+      const amt = Number(state.investments.monthly[key] && state.investments.monthly[key][catKey]) || 0;
+      if (amt <= 0) return;
+      // Move the amount into Portfolio's tracked Value for this category —
+      // since there's no live bank connection, this is the app's best
+      // approximation of "the transfer happened"; Value stays editable so
+      // it can still be corrected against the real account balance anytime.
+      const currentVal = Number(portfolioValueFor(catKey, key)) || 0;
+      const newVal = currentVal + amt;
+      if (PORTFOLIO_MONTHLY_KEYS.includes(catKey)) {
+        state.portfolio.monthlyValues[key] = state.portfolio.monthlyValues[key] || {};
+        state.portfolio.monthlyValues[key][catKey] = newVal;
+      } else {
+        state.portfolio.values[catKey] = newVal;
+      }
+      // Permanent record for Target progress (survives "This month" resets)
+      state.investments.contributed[catKey] = (Number(state.investments.contributed[catKey]) || 0) + amt;
+      state.investments.lastAdded[catKey] = key;
+      // Reset "This month" now that it's been added
+      state.investments.monthly[key] = state.investments.monthly[key] || {};
+      state.investments.monthly[key][catKey] = 0;
+      saveData();
+      render();
+    });
+  });
 }
 
 function renderPortfolio() {
@@ -980,18 +1024,17 @@ function renderPortfolio() {
   ensurePortfolioMonthValues(key);
 
   const stocksVal = Number(portfolioValueFor('stocks', key)) || 0;
-  const monthlyContrib = (state.investments.monthly && state.investments.monthly[key]) || {};
 
   let grandTotal = stocksVal;
   let grandTotalAtTarget = stocksVal;
   const rows = CATEGORIES.map(cat => {
     const value = Number(portfolioValueFor(cat.key, key)) || 0;
-    // Nuvarande = this month's contribution (from the Investing tab, same
-    // month). Cumulative all-time contribution is still tracked separately,
-    // purely to project "if target is met" figures below.
-    const nuvarande = Number(monthlyContrib[cat.key]) || 0;
+    // Total now equals Value directly — "Add now" in the Investing tab
+    // already folds each month's contribution into Value at the moment
+    // it's confirmed, so there's no separate pending amount to project
+    // on top of it anymore.
+    const total = value;
     const cumulative = totalContribution(cat.key);
-    const total = value + nuvarande;
     const t = state.investments.targets[cat.key] || {};
     const target = Number(t.target) || 0;
     // If a target is set, project this category at whichever is higher —
@@ -999,7 +1042,8 @@ function renderPortfolio() {
     const totalAtTarget = value + (target > 0 ? Math.max(target, cumulative) : cumulative);
     grandTotal += total;
     grandTotalAtTarget += totalAtTarget;
-    return { cat, value, nuvarande, cumulative, total, target, totalAtTarget };
+    const lastAddedKey = state.investments.lastAdded[cat.key];
+    return { cat, value, cumulative, total, target, totalAtTarget, lastAddedKey };
   });
 
   const cashTotal = rows.filter(r => CASH_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.total, 0);
@@ -1050,7 +1094,12 @@ function renderPortfolio() {
   listTitle.textContent = 'Savings & investments';
   mainContainer.appendChild(listTitle);
 
-  rows.forEach(({ cat, value, nuvarande, total }) => {
+  rows.forEach(({ cat, value, total, lastAddedKey }) => {
+    let addedLabel = '–';
+    if (lastAddedKey) {
+      const [ly, lm] = lastAddedKey.split('-').map(Number);
+      addedLabel = `${MONTH_NAMES[lm-1].slice(0,3)} ${ly}`;
+    }
     const c = document.createElement('div');
     c.className = 'cat-card';
     c.innerHTML = `
@@ -1060,7 +1109,7 @@ function renderPortfolio() {
       </div>
       <div class="cat-fields">
         <div class="field"><label>Value</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-cat="${cat.key}" data-role="pvalue" value="${portfolioValueFor(cat.key, key)}"></div>
-        <div class="field"><label>Nuvarande</label><div class="cat-current">${fmtSEK(nuvarande)}</div></div>
+        <div class="field"><label>Added in</label><div class="cat-current">${addedLabel}</div></div>
         <div class="field"><label>Total</label><div class="cat-total">${fmtSEK(total)}</div></div>
       </div>
     `;
@@ -1271,7 +1320,7 @@ function renderPortfolio() {
 
   const note = document.createElement('div');
   note.className = 'rates-note';
-  note.innerHTML = `<b>Value</b> for LYSA, Avanza Global Index, Sparkonto and Stocks is entered fresh each month — the actual balance at the start of that month — and can be adjusted per month; Resa and Buffert keep one shared value. <b>Nuvarande</b> is this month's contribution, carried over automatically from the Investments tab's "This month" figure for the same month. <b>Total</b> is Value + Nuvarande (a projection of the balance once this month's contribution lands). <b>Stocks</b> has no Nuvarande — it's Value only. <b>Sale of apartment</b> — Value is just a record of the proceeds; only <b>To Index funds</b> and <b>To Cash</b> actually count, and only toward the "if target is met" figures. "<b>...if target is met</b>" projects a category at its Investments target (or its all-time contributions so far if that's already higher). <b>Cash</b> = Sparkonto + Buffert. <b>Stocks/Index funds</b> = LYSA + Avanza Global + Stocks. <b>Net value (excl. Resa)</b> is Total value minus Resa. The top number is the total value if all targets are met, with Resa excluded.`;
+  note.innerHTML = `<b>Value</b> for LYSA, Avanza Global Index, Sparkonto and Stocks is entered fresh each month — the actual balance at the start of that month — and can be adjusted per month; Resa and Buffert keep one shared value. It also updates automatically whenever you tap <b>Add now</b> in the Investments tab. <b>Added in</b> shows the month you last tapped Add now for that category. <b>Total</b> is just Value now — no separate projection on top. <b>Stocks</b> has no Add now — it's Value only, auto-priced. <b>Sale of apartment</b> — Value is just a record of the proceeds; only <b>To Index funds</b> and <b>To Cash</b> actually count, and only toward the "if target is met" figures. "<b>...if target is met</b>" projects a category at its Investments target (or its all-time Add now total so far if that's already higher). <b>Cash</b> = Sparkonto + Buffert. <b>Stocks/Index funds</b> = LYSA + Avanza Global + Stocks. <b>Net value (excl. Resa)</b> is Total value minus Resa. The top number is the total value if all targets are met, with Resa excluded.`;
   mainContainer.appendChild(note);
 
   mainContainer.querySelectorAll('[data-role="aptValue"]').forEach(inp => {
@@ -1557,7 +1606,7 @@ function attachDayListeners() {
       const idx = Number(btn.dataset.idx);
       const key = state.activeMonth;
       const dateStr = state.months[key].days[idx].dateStr;
-      state.months[key].days[idx] = { dateStr, start:'', stop:'', lunchStart:'', lunchDur:'', sparbevakare:false, holiday:false, km:'', notes:'' };
+      state.months[key].days[idx] = { dateStr, start:'', stop:'', lunchStart:'', lunchDur:'', sparbevakare:false, holiday:false, km:'', akassaHours:'', notes:'' };
       saveData();
       render();
     });
