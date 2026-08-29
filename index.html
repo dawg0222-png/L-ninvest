@@ -539,20 +539,24 @@ const STOCK_KEYS = ['lysa', 'avanzaGlobal'];
 /* ---------- Stock holdings: auto-priced once a day ---------- */
 let lastStockFetchError = '';
 let autoRefreshAttempted = false;
+let lastRefreshAttemptAt = 0;
 function todayStr() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-// Fetches each holding's latest close (Stooq — free, keyless, no published
-// low rate limit like Finnhub's free tier) + the USD->SEK rate (Frankfurter,
-// no key needed) at most once per calendar day, caching the result in
-// state.portfolio.stocksCache. Returns true if it actually refreshed (so the
-// caller can re-render). Any failure is recorded in lastStockFetchError
-// instead of being swallowed, so the UI can show it.
+// Fetches each holding's previous close (Finnhub — proven to work through
+// this pipeline) + the USD->SEK rate (Frankfurter, no key needed) at most
+// once per calendar day, caching the result in state.portfolio.stocksCache.
+// Returns true if it actually refreshed (so the caller can re-render). Any
+// failure is recorded in lastStockFetchError instead of being swallowed, so
+// the UI can show it. A 20s cooldown (see lastRefreshAttemptAt below) stops
+// rapid re-clicking from burning through Finnhub's free-tier rate limit.
 async function refreshStockPricesIfNeeded(force) {
   lastStockFetchError = '';
   const holdings = state.portfolio.stockHoldings || [];
+  const apiKey = (state.portfolio.finnhubKey || '').trim();
+  if (!apiKey) { lastStockFetchError = 'No API key entered.'; return false; }
   if (holdings.length === 0) { lastStockFetchError = 'No holdings added yet.'; return false; }
   const today = todayStr();
   if (!force && state.portfolio.stocksCache.date === today) return false;
@@ -561,18 +565,12 @@ async function refreshStockPricesIfNeeded(force) {
   const prices = {};
   try {
     for (const t of tickers) {
-      // Stooq needs an exchange suffix (.us, .st, etc). If the user typed a
-      // bare US ticker like AAPL we add .us; if they already typed one
-      // (e.g. ERIC-B.ST) we use it as given.
-      const stooqSymbol = (t.includes('.') ? t : `${t}.US`).toLowerCase();
-      // /q/d/l/ is Stooq's daily-history CSV endpoint — the legacy /q/l/
-      // "live quote" path stopped resolving (404). We only need the most
-      // recent row, which serves the same purpose as "yesterday's close".
-      const stooqUrl = `https://stooq.com/q/d/l/?s=${encodeURIComponent(stooqSymbol)}&i=d`;
-      // Routed through your own dedicated Cloudflare Worker so the browser
-      // gets proper CORS headers back. A cache-busting timestamp +
-      // cache:'no-store' stop the browser reusing a stale response.
-      const proxyUrl = `https://finnhub-proxy.dawg0222.workers.dev/?url=${encodeURIComponent(stooqUrl)}&_=${Date.now()}`;
+      // Finnhub doesn't allow direct calls from a browser, so this routes
+      // through your own dedicated Cloudflare Worker (set up as a personal
+      // CORS proxy) — it fetches the Finnhub URL server-side and hands the
+      // response back with the right headers. Nobody else shares this proxy.
+      const finnhubUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${encodeURIComponent(apiKey)}`;
+      const proxyUrl = `https://finnhub-proxy.dawg0222.workers.dev/?url=${encodeURIComponent(finnhubUrl)}&_=${Date.now()}`;
       let res;
       try {
         res = await fetch(proxyUrl, { cache: 'no-store' });
@@ -580,19 +578,15 @@ async function refreshStockPricesIfNeeded(force) {
         throw new Error(`Network error reaching the proxy for ${t}: ${fetchErr.name || 'Error'}: ${fetchErr.message}.`);
       }
       if (!res.ok) {
-        throw new Error(`Price lookup failed for ${t}: HTTP ${res.status} ${res.statusText || ''} (proxy or Stooq may be temporarily unavailable).`);
+        if (res.status === 429) throw new Error(`Rate limited (HTTP 429) looking up ${t} — Finnhub's free tier allows a limited number of calls per minute. Wait a minute or two before trying again; this should never happen with normal once-a-day use.`);
+        throw new Error(`Price lookup failed for ${t}: HTTP ${res.status} ${res.statusText || ''} (proxy or Finnhub may be temporarily unavailable).`);
       }
-      const csvText = (await res.text()).trim();
-      const lines = csvText.split('\n').filter(l => l.trim());
-      // Header row is "Date,Open,High,Low,Close,Volume"; the last line is
-      // the most recent trading day. An unknown symbol comes back as just
-      // an error line with no comma-separated data.
-      const lastLine = lines[lines.length - 1] || '';
-      const cols = lastLine.split(',');
-      const price = parseFloat(cols[4]);
-      if (lines.length < 2 || isNaN(price)) {
-        throw new Error(`No price returned for "${t}" — check the ticker symbol (Stooq format, e.g. AAPL.US, ERIC-B.ST).`);
-      }
+      const data = await res.json();
+      if (data && data.error) throw new Error(`Finnhub error for ${t}: ${data.error}`);
+      // pc = previous close — matches "check once a day, yesterday's close".
+      // Falls back to current price if pc isn't available for some reason.
+      const price = data && data.pc ? data.pc : (data && data.c) || 0;
+      if (!price) throw new Error(`No price returned for "${t}" — check the ticker symbol (e.g. non-US stocks need a suffix like ERIC-B.ST), or check the API key is correct.`);
       prices[t] = price;
     }
     const fxRes = await fetch(`https://api.frankfurter.app/latest?from=USD&to=SEK&_=${Date.now()}`, { cache: 'no-store' });
@@ -1060,6 +1054,9 @@ function renderPortfolio() {
   const cache = state.portfolio.stocksCache || { date: '', fx: null, prices: {} };
   const { totalUsd, fx, totalSek } = stockHoldingsTotals();
 
+  const cooldownRemaining = Math.max(0, 20 - Math.floor((Date.now() - lastRefreshAttemptAt) / 1000));
+  const hasKey = !!(state.portfolio.finnhubKey || '').trim();
+
   const autoTitle = document.createElement('div');
   autoTitle.className = 'section-title';
   autoTitle.textContent = 'Stocks portfolio (auto-priced)';
@@ -1068,7 +1065,14 @@ function renderPortfolio() {
   const autoCard = document.createElement('div');
   autoCard.className = 'cat-card';
   autoCard.innerHTML = `
-    <div style="font-size:11.5px;color:var(--text-dim);margin-bottom:12px;">Prices from Stooq (free, no key needed), routed through your own Cloudflare Worker proxy. Non-US tickers need the exchange suffix, e.g. ERIC-B.ST — US tickers like AAPL work as-is.</div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Finnhub API key</label>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="finnhubKeyInput" placeholder="Paste your free Finnhub API key" value="${escapeHtml(state.portfolio.finnhubKey || '')}" style="flex:1;">
+        <button type="button" id="toggleKeyVisibility" style="flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--text-dim);border-radius:9px;padding:0 12px;font-size:13px;font-weight:600;">Show</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Free key at finnhub.io/register. Stored only on this device. Requests route through your own private Cloudflare Worker proxy. Non-US tickers need the exchange suffix, e.g. ERIC-B.ST.</div>
+    </div>
     <div id="holdingsList"></div>
     <button type="button" class="clear-day" id="addHoldingBtn" style="color:var(--text);border-color:var(--border);margin-top:2px;">+ Add holding</button>
     <div class="day-compute" style="margin-top:14px;">
@@ -1078,9 +1082,10 @@ function renderPortfolio() {
       <div>Priced <b>${cache.date || 'never'}</b></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
-      <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;">Refresh now</button>
+      <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;" ${cooldownRemaining > 0 ? 'disabled' : ''}>${cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Refresh now'}</button>
       <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use as this month's Stocks value</button>
     </div>
+    ${!hasKey ? '<div style="margin-top:10px;font-size:12px;color:var(--warn);">Add an API key above to enable price fetching.</div>' : ''}
     ${lastStockFetchError ? `<div style="margin-top:10px;font-size:12px;color:var(--warn);">⚠ ${escapeHtml(lastStockFetchError)}</div>` : ''}
   `;
   mainContainer.appendChild(autoCard);
@@ -1117,6 +1122,8 @@ function renderPortfolio() {
   // fast tap-then-tap on mobile (which doesn't always fire a field's
   // blur/change before the button's own click runs) can't read stale state.
   function syncAutoStocksInputsFromDom() {
+    const keyInp = autoCard.querySelector('#finnhubKeyInput');
+    if (keyInp) state.portfolio.finnhubKey = keyInp.value.trim();
     autoCard.querySelectorAll('[data-role="hticker"]').forEach(inp => {
       const i = Number(inp.dataset.i);
       if (state.portfolio.stockHoldings[i]) state.portfolio.stockHoldings[i].ticker = inp.value.trim().toUpperCase();
@@ -1128,6 +1135,18 @@ function renderPortfolio() {
     saveData();
   }
 
+  const finnhubKeyInputEl = autoCard.querySelector('#finnhubKeyInput');
+  finnhubKeyInputEl.addEventListener('input', (e) => {
+    state.portfolio.finnhubKey = e.target.value.trim();
+    saveData();
+  });
+  finnhubKeyInputEl.addEventListener('change', () => { render(); });
+  autoCard.querySelector('#toggleKeyVisibility').addEventListener('click', (e) => {
+    const inp = autoCard.querySelector('#finnhubKeyInput');
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    e.target.textContent = showing ? 'Show' : 'Hide';
+  });
   autoCard.querySelector('#addHoldingBtn').addEventListener('click', () => {
     syncAutoStocksInputsFromDom();
     state.portfolio.stockHoldings.push({ ticker: '', shares: '' });
@@ -1135,6 +1154,10 @@ function renderPortfolio() {
     render();
   });
   autoCard.querySelector('#refreshPricesBtn').addEventListener('click', async () => {
+    // Cooldown guard: ignore rapid re-clicks that could otherwise burn
+    // through Finnhub's free-tier per-minute rate limit.
+    if (Date.now() - lastRefreshAttemptAt < 20000) { render(); return; }
+    lastRefreshAttemptAt = Date.now();
     syncAutoStocksInputsFromDom();
     await refreshStockPricesIfNeeded(true);
     render();
