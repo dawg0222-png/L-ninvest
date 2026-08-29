@@ -565,7 +565,10 @@ async function refreshStockPricesIfNeeded(force) {
       // bare US ticker like AAPL we add .us; if they already typed one
       // (e.g. ERIC-B.ST) we use it as given.
       const stooqSymbol = (t.includes('.') ? t : `${t}.US`).toLowerCase();
-      const stooqUrl = `https://stooq.com/q/l/?s=${encodeURIComponent(stooqSymbol)}&f=sd2t2ohlcv&h&e=csv`;
+      // /q/d/l/ is Stooq's daily-history CSV endpoint — the legacy /q/l/
+      // "live quote" path stopped resolving (404). We only need the most
+      // recent row, which serves the same purpose as "yesterday's close".
+      const stooqUrl = `https://stooq.com/q/d/l/?s=${encodeURIComponent(stooqSymbol)}&i=d`;
       // Routed through your own dedicated Cloudflare Worker so the browser
       // gets proper CORS headers back. A cache-busting timestamp +
       // cache:'no-store' stop the browser reusing a stale response.
@@ -580,12 +583,14 @@ async function refreshStockPricesIfNeeded(force) {
         throw new Error(`Price lookup failed for ${t}: HTTP ${res.status} ${res.statusText || ''} (proxy or Stooq may be temporarily unavailable).`);
       }
       const csvText = (await res.text()).trim();
-      const lines = csvText.split('\n');
-      // Row 0 is the CSV header; row 1 is the actual quote:
-      // Symbol,Date,Time,Open,High,Low,Close,Volume
-      const cols = lines[1] ? lines[1].split(',') : [];
-      const price = parseFloat(cols[6]);
-      if (!cols.length || isNaN(price) || cols[0] === 'N/D') {
+      const lines = csvText.split('\n').filter(l => l.trim());
+      // Header row is "Date,Open,High,Low,Close,Volume"; the last line is
+      // the most recent trading day. An unknown symbol comes back as just
+      // an error line with no comma-separated data.
+      const lastLine = lines[lines.length - 1] || '';
+      const cols = lastLine.split(',');
+      const price = parseFloat(cols[4]);
+      if (lines.length < 2 || isNaN(price)) {
         throw new Error(`No price returned for "${t}" — check the ticker symbol (Stooq format, e.g. AAPL.US, ERIC-B.ST).`);
       }
       prices[t] = price;
