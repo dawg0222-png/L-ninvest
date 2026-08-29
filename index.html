@@ -498,6 +498,7 @@ if (!state.portfolio.apartmentSale) state.portfolio.apartmentSale = { value: '',
 if (!state.portfolio.monthlyValues) state.portfolio.monthlyValues = {};
 if (!state.portfolio.stockHoldings) state.portfolio.stockHoldings = [];
 if (!state.portfolio.stocksCache) state.portfolio.stocksCache = { date: '', fx: null, prices: {} };
+if (state.portfolio.brokerFeePct == null) state.portfolio.brokerFeePct = 0.25;
 if (!state.activeTab) state.activeTab = 'lon';
 let openDayIndex = null;
 
@@ -649,7 +650,10 @@ async function refreshStockPricesIfNeeded(force) {
 }
 
 // Sums shares × cached price across all holdings, converted to SEK using
-// the cached FX rate. Uses whatever's cached — doesn't fetch.
+// the cached FX rate. Also applies the broker's currency-conversion fee
+// (state.portfolio.brokerFeePct) to give a realistic "if I sold and
+// withdrew today" figure alongside the raw market value. Uses whatever's
+// cached — doesn't fetch.
 function stockHoldingsTotals() {
   const cache = state.portfolio.stocksCache || {};
   const prices = cache.prices || {};
@@ -661,7 +665,11 @@ function stockHoldingsTotals() {
     const price = Number(prices[t]) || 0;
     totalUsd += shares * price;
   });
-  return { totalUsd, fx, totalSek: totalUsd * fx };
+  const totalSek = totalUsd * fx;
+  const feePct = Number(state.portfolio.brokerFeePct);
+  const feePctSafe = isNaN(feePct) ? 0.25 : feePct;
+  const totalSekAfterFee = totalSek * (1 - feePctSafe / 100);
+  return { totalUsd, fx, totalSek, feePct: feePctSafe, totalSekAfterFee };
 }
 
 /* Cumulative amount actually added to a category via "Add now" — this
@@ -1137,7 +1145,7 @@ function renderPortfolio() {
   /* ---------- Auto-priced stock holdings ---------- */
   const holdings = state.portfolio.stockHoldings || [];
   const cache = state.portfolio.stocksCache || { date: '', fx: null, prices: {} };
-  const { totalUsd, fx, totalSek } = stockHoldingsTotals();
+  const { totalUsd, fx, totalSek, feePct, totalSekAfterFee } = stockHoldingsTotals();
 
   const cooldownRemaining = Math.max(0, 20 - Math.floor((Date.now() - lastRefreshAttemptAt) / 1000));
   if (cooldownRemaining > 0) {
@@ -1166,16 +1174,23 @@ function renderPortfolio() {
     </div>
     <div id="holdingsList"></div>
     <button type="button" class="clear-day" id="addHoldingBtn" style="color:var(--text);border-color:var(--border);margin-top:2px;">+ Add holding</button>
+    <div class="field" style="margin-top:12px;">
+      <label>Broker currency conversion fee (%)</label>
+      <input type="number" inputmode="decimal" min="0" max="100" step="0.01" id="brokerFeeInput" placeholder="0.25" value="${state.portfolio.brokerFeePct}">
+      <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">What your broker actually charges to convert USD→SEK on sale — not a market rate, just their fee. Affects the "after fee" figure below only.</div>
+    </div>
     <div class="day-compute" style="margin-top:14px;">
       <div>USD total <b>$${totalUsd.toFixed(2)}</b></div>
       <div>USD→SEK <b>${fx ? fx.toFixed(3) : '–'}</b></div>
-      <div>Total <b>${fmtSEK(totalSek)}</b></div>
+      <div>Total (market value) <b>${fmtSEK(totalSek)}</b></div>
+      <div>Total (after ${feePct}% fee) <b style="color:var(--warn);">${fmtSEK(totalSekAfterFee)}</b></div>
       <div>Priced <b>${cache.date || 'never'}</b></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
       <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;${cooldownRemaining > 0 ? 'opacity:0.45;' : ''}" ${cooldownRemaining > 0 ? 'disabled' : ''}>${cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Refresh now'}</button>
       <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use as this month's Stocks value</button>
     </div>
+    <div style="font-size:11.5px;color:var(--text-dim);margin-top:8px;">"Use as this month's Stocks value" uses the market value (before fee) — type the after-fee figure in manually instead if you'd rather track net proceeds.</div>
     ${!hasKey ? '<div style="margin-top:10px;font-size:12px;color:var(--warn);">Add an API key above to enable price fetching.</div>' : ''}
     ${lastStockFetchError ? `<div style="margin-top:10px;font-size:12px;color:var(--warn);">⚠ ${escapeHtml(lastStockFetchError)}</div>` : ''}
   `;
@@ -1238,6 +1253,12 @@ function renderPortfolio() {
     inp.type = showing ? 'password' : 'text';
     e.target.textContent = showing ? 'Show' : 'Hide';
   });
+  autoCard.querySelector('#brokerFeeInput').addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    state.portfolio.brokerFeePct = isNaN(v) ? 0.25 : v;
+    saveData();
+  });
+  autoCard.querySelector('#brokerFeeInput').addEventListener('change', () => { render(); });
   autoCard.querySelector('#addHoldingBtn').addEventListener('click', () => {
     syncAutoStocksInputsFromDom();
     state.portfolio.stockHoldings.push({ ticker: '', shares: '' });
