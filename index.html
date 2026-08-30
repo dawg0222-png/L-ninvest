@@ -547,101 +547,71 @@ function portfolioValueFor(catKey, key) {
 const CASH_KEYS = ['sparkonto', 'buffert'];
 const STOCK_KEYS = ['lysa', 'avanzaGlobal'];
 
-/* ---------- Stock holdings: auto-priced once a day ---------- */
+/* ---------- Stock holdings: priced by the Worker's nightly cache ---------- */
 let lastStockFetchError = '';
 let autoRefreshAttempted = false;
-let lastRefreshAttemptAt = 0;
 function todayStr() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-// Fetches each holding's previous close (Finnhub — proven to work through
-// this pipeline) + the USD->SEK rate (Frankfurter, no key needed) at most
-// once per calendar day, caching the result in state.portfolio.stocksCache.
-// Returns true if it actually refreshed (so the caller can re-render). Any
-// failure is recorded in lastStockFetchError instead of being swallowed, so
-// the UI can show it. A 20s cooldown (see lastRefreshAttemptAt below) stops
-// rapid re-clicking from burning through Finnhub's free-tier rate limit.
+// Prices now come from your Cloudflare Worker's own KV cache, populated by
+// a nightly cron job on the Worker (once per day, previous close only —
+// never after-hours/overnight prices), not from a live Finnhub call
+// triggered by this app. That means checking here is just a fast read with
+// no rate-limit risk at all, however often it's called. Registering the
+// current ticker list also makes the Worker fetch any brand-new ticker
+// once immediately, so it's not stuck blank until the next nightly run.
 async function refreshStockPricesIfNeeded(force) {
   lastStockFetchError = '';
   const holdings = state.portfolio.stockHoldings || [];
-  const apiKey = (state.portfolio.finnhubKey || '').trim();
-  if (!apiKey) { lastStockFetchError = 'No API key entered.'; return false; }
   if (holdings.length === 0) { lastStockFetchError = 'No holdings added yet.'; return false; }
   const today = todayStr();
   if (!force && state.portfolio.stocksCache.date === today) return false;
   const tickers = [...new Set(holdings.map(h => (h.ticker || '').trim().toUpperCase()).filter(Boolean))];
   if (tickers.length === 0) { lastStockFetchError = 'No ticker symbols entered.'; return false; }
-  const prices = {};
+  const WORKER = 'https://finnhub-proxy.dawg0222.workers.dev';
   try {
-    let first = true;
-    for (const t of tickers) {
-      // Small pause between tickers so several calls in one refresh don't
-      // burst past Finnhub's per-second rate limit even while comfortably
-      // under its per-minute one.
-      if (!first) await new Promise(r => setTimeout(r, 400));
-      first = false;
-      // Finnhub doesn't allow direct calls from a browser, so this routes
-      // through your own dedicated Cloudflare Worker (set up as a personal
-      // CORS proxy) — it fetches the Finnhub URL server-side and hands the
-      // response back with the right headers. Nobody else shares this proxy.
-      const finnhubUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(t)}&token=${encodeURIComponent(apiKey)}`;
-      const proxyUrl = `https://finnhub-proxy.dawg0222.workers.dev/?url=${encodeURIComponent(finnhubUrl)}&_=${Date.now()}`;
-      // Transient network blips (a Worker cold start, a momentary edge
-      // hiccup) can fail a JS fetch() even though the same URL works fine
-      // as a plain page visit. Retry a couple of times before giving up.
-      let res;
-      let lastNetworkErr;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          res = await fetch(proxyUrl, { cache: 'no-store' });
-          lastNetworkErr = null;
-          break;
-        } catch (fetchErr) {
-          lastNetworkErr = fetchErr;
-          if (attempt < 3) await new Promise(r => setTimeout(r, 800 * attempt));
-        }
-      }
-      if (lastNetworkErr) {
-        throw new Error(`Network error reaching the proxy for ${t} after 3 attempts: ${lastNetworkErr.name || 'Error'}: ${lastNetworkErr.message}.`);
-      }
-      if (!res.ok) {
-        if (res.status === 429) throw new Error(`Rate limited (HTTP 429) looking up ${t} — Finnhub's free tier allows a limited number of calls per minute. Wait a minute or two before trying again; this should never happen with normal once-a-day use.`);
-        throw new Error(`Price lookup failed for ${t}: HTTP ${res.status} ${res.statusText || ''} (proxy or Finnhub may be temporarily unavailable).`);
-      }
-      const data = await res.json();
-      if (data && data.error) throw new Error(`Finnhub error for ${t}: ${data.error}`);
-      // pc = previous close — matches "check once a day, yesterday's close".
-      // Falls back to current price if pc isn't available for some reason.
-      const price = data && data.pc ? data.pc : (data && data.c) || 0;
-      if (!price) throw new Error(`No price returned for "${t}" — check the ticker symbol (e.g. non-US stocks need a suffix like ERIC-B.ST), or check the API key is correct.`);
-      prices[t] = price;
+    // Keep the Worker's watchlist in sync + trigger an immediate fetch for
+    // any ticker it hasn't seen before. Best-effort: if this fails, we can
+    // still read whatever's already cached below.
+    try {
+      await fetch(`${WORKER}/register-tickers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickers }),
+        cache: 'no-store',
+      });
+    } catch (regErr) { /* non-fatal — proceed to read whatever's cached */ }
+
+    const pricesRes = await fetch(`${WORKER}/prices?tickers=${encodeURIComponent(tickers.join(','))}&_=${Date.now()}`, { cache: 'no-store' });
+    if (!pricesRes.ok) throw new Error(`Price lookup failed: HTTP ${pricesRes.status} (Worker may be temporarily unavailable).`);
+    const pricesData = await pricesRes.json();
+    const cachedPrices = (pricesData && pricesData.prices) || {};
+    const prices = {};
+    const missing = [];
+    tickers.forEach(t => {
+      if (cachedPrices[t] && cachedPrices[t].price) prices[t] = cachedPrices[t].price;
+      else missing.push(t);
+    });
+    if (Object.keys(prices).length === 0) {
+      throw new Error(`No prices cached yet for: ${missing.join(', ')} — check the ticker symbol, or it may just need tonight's scheduled update to run once.`);
     }
-    let fxRes;
-    let lastFxErr;
-    // Routed through your Cloudflare Worker too — Frankfurter's endpoint
-    // issues a redirect that's missing a CORS header on that hop, which
-    // blocks a direct browser fetch() outright. The Worker follows the
-    // redirect server-side and hands back a clean response.
+
+    // FX rate — routed through the Worker's generic proxy too, since
+    // Frankfurter's endpoint issues a redirect missing a CORS header that
+    // blocks a direct browser fetch() outright.
     const fxTarget = `https://api.frankfurter.app/latest?from=USD&to=SEK`;
-    const fxProxyUrl = `https://finnhub-proxy.dawg0222.workers.dev/?url=${encodeURIComponent(fxTarget)}&_=${Date.now()}`;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        fxRes = await fetch(fxProxyUrl, { cache: 'no-store' });
-        lastFxErr = null;
-        break;
-      } catch (fetchErr) {
-        lastFxErr = fetchErr;
-        if (attempt < 3) await new Promise(r => setTimeout(r, 800 * attempt));
-      }
-    }
-    if (lastFxErr) throw new Error(`Network error reaching the exchange-rate service after 3 attempts: ${lastFxErr.name || 'Error'}: ${lastFxErr.message}.`);
+    const fxRes = await fetch(`${WORKER}/?url=${encodeURIComponent(fxTarget)}&_=${Date.now()}`, { cache: 'no-store' });
     if (!fxRes.ok) throw new Error(`Exchange-rate lookup failed (HTTP ${fxRes.status}).`);
     const fxData = await fxRes.json();
     const fx = (fxData && fxData.rates && fxData.rates.SEK) || (state.portfolio.stocksCache.fx || null);
+
     state.portfolio.stocksCache = { date: today, fx, prices };
     saveData();
+    if (missing.length > 0) {
+      lastStockFetchError = `Not priced yet: ${missing.join(', ')} — will populate after tonight's scheduled update.`;
+    }
     return true;
   } catch (e) {
     lastStockFetchError = (e && e.message) ? e.message : 'Could not fetch prices — check your internet connection and try again.';
@@ -1147,15 +1117,6 @@ function renderPortfolio() {
   const cache = state.portfolio.stocksCache || { date: '', fx: null, prices: {} };
   const { totalUsd, fx, totalSek, feePct, totalSekAfterFee } = stockHoldingsTotals();
 
-  const cooldownRemaining = Math.max(0, 20 - Math.floor((Date.now() - lastRefreshAttemptAt) / 1000));
-  if (cooldownRemaining > 0) {
-    // Automatically re-render once the cooldown actually expires, so the
-    // button visibly re-enables itself instead of looking permanently
-    // stuck until some unrelated interaction happens to trigger a render.
-    setTimeout(() => { if (state.activeTab === 'portfolio') render(); }, (cooldownRemaining + 1) * 1000);
-  }
-  const hasKey = !!(state.portfolio.finnhubKey || '').trim();
-
   const autoTitle = document.createElement('div');
   autoTitle.className = 'section-title';
   autoTitle.textContent = 'Stocks portfolio (auto-priced)';
@@ -1164,14 +1125,7 @@ function renderPortfolio() {
   const autoCard = document.createElement('div');
   autoCard.className = 'cat-card';
   autoCard.innerHTML = `
-    <div class="field" style="margin-bottom:12px;">
-      <label>Finnhub API key</label>
-      <div style="display:flex;gap:8px;">
-        <input type="password" id="finnhubKeyInput" placeholder="Paste your free Finnhub API key" value="${escapeHtml(state.portfolio.finnhubKey || '')}" style="flex:1;">
-        <button type="button" id="toggleKeyVisibility" style="flex:0 0 auto;background:var(--card2);border:1px solid var(--border);color:var(--text-dim);border-radius:9px;padding:0 12px;font-size:13px;font-weight:600;">Show</button>
-      </div>
-      <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Free key at finnhub.io/register. Stored only on this device. Requests route through your own private Cloudflare Worker proxy. Non-US tickers need the exchange suffix, e.g. ERIC-B.ST.</div>
-    </div>
+    <div style="font-size:11.5px;color:var(--text-dim);margin-bottom:12px;">Prices are fetched once a night by your Cloudflare Worker (previous close only — never after-hours) and cached, so this just reads that cache. Non-US tickers need the exchange suffix, e.g. ERIC-B.ST.</div>
     <div id="holdingsList"></div>
     <button type="button" class="clear-day" id="addHoldingBtn" style="color:var(--text);border-color:var(--border);margin-top:2px;">+ Add holding</button>
     <div class="field" style="margin-top:12px;">
@@ -1187,11 +1141,10 @@ function renderPortfolio() {
       <div>Priced <b>${cache.date || 'never'}</b></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
-      <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;${cooldownRemaining > 0 ? 'opacity:0.45;' : ''}" ${cooldownRemaining > 0 ? 'disabled' : ''}>${cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Refresh now'}</button>
+      <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;">Refresh now</button>
       <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use as this month's Stocks value</button>
     </div>
     <div style="font-size:11.5px;color:var(--text-dim);margin-top:8px;">"Use as this month's Stocks value" uses the market value (before fee) — type the after-fee figure in manually instead if you'd rather track net proceeds.</div>
-    ${!hasKey ? '<div style="margin-top:10px;font-size:12px;color:var(--warn);">Add an API key above to enable price fetching.</div>' : ''}
     ${lastStockFetchError ? `<div style="margin-top:10px;font-size:12px;color:var(--warn);">⚠ ${escapeHtml(lastStockFetchError)}</div>` : ''}
   `;
   mainContainer.appendChild(autoCard);
@@ -1228,8 +1181,6 @@ function renderPortfolio() {
   // fast tap-then-tap on mobile (which doesn't always fire a field's
   // blur/change before the button's own click runs) can't read stale state.
   function syncAutoStocksInputsFromDom() {
-    const keyInp = autoCard.querySelector('#finnhubKeyInput');
-    if (keyInp) state.portfolio.finnhubKey = keyInp.value.trim();
     autoCard.querySelectorAll('[data-role="hticker"]').forEach(inp => {
       const i = Number(inp.dataset.i);
       if (state.portfolio.stockHoldings[i]) state.portfolio.stockHoldings[i].ticker = inp.value.trim().toUpperCase();
@@ -1241,18 +1192,6 @@ function renderPortfolio() {
     saveData();
   }
 
-  const finnhubKeyInputEl = autoCard.querySelector('#finnhubKeyInput');
-  finnhubKeyInputEl.addEventListener('input', (e) => {
-    state.portfolio.finnhubKey = e.target.value.trim();
-    saveData();
-  });
-  finnhubKeyInputEl.addEventListener('change', () => { render(); });
-  autoCard.querySelector('#toggleKeyVisibility').addEventListener('click', (e) => {
-    const inp = autoCard.querySelector('#finnhubKeyInput');
-    const showing = inp.type === 'text';
-    inp.type = showing ? 'password' : 'text';
-    e.target.textContent = showing ? 'Show' : 'Hide';
-  });
   autoCard.querySelector('#brokerFeeInput').addEventListener('input', (e) => {
     const v = parseFloat(e.target.value);
     state.portfolio.brokerFeePct = isNaN(v) ? 0.25 : v;
@@ -1266,12 +1205,8 @@ function renderPortfolio() {
     render();
   });
   autoCard.querySelector('#refreshPricesBtn').addEventListener('click', async (e) => {
-    // Cooldown guard: ignore rapid re-clicks that could otherwise burn
-    // through Finnhub's free-tier per-minute rate limit.
-    if (Date.now() - lastRefreshAttemptAt < 20000) { render(); return; }
-    lastRefreshAttemptAt = Date.now();
     // Immediate feedback the moment it's tapped, before the fetch sequence
-    // (which can take a few seconds with several tickers) finishes.
+    // finishes.
     e.target.disabled = true;
     e.target.textContent = 'Checking…';
     try {
