@@ -598,14 +598,11 @@ async function refreshStockPricesIfNeeded(force) {
       throw new Error(`No prices cached yet for: ${missing.join(', ')} — check the ticker symbol, or it may just need tonight's scheduled update to run once.`);
     }
 
-    // FX rate — routed through the Worker's generic proxy too, since
-    // Frankfurter's endpoint issues a redirect missing a CORS header that
-    // blocks a direct browser fetch() outright.
-    const fxTarget = `https://api.frankfurter.app/latest?from=USD&to=SEK`;
-    const fxRes = await fetch(`${WORKER}/?url=${encodeURIComponent(fxTarget)}&_=${Date.now()}`, { cache: 'no-store' });
-    if (!fxRes.ok) throw new Error(`Exchange-rate lookup failed (HTTP ${fxRes.status}).`);
-    const fxData = await fxRes.json();
-    const fx = (fxData && fxData.rates && fxData.rates.SEK) || (state.portfolio.stocksCache.fx || null);
+    // USD->SEK now comes bundled in the same /prices response — a real
+    // market rate (Finnhub's OANDA:USD_SEK forex pair), fetched and cached
+    // by the Worker the same way as the stock prices, not the ECB's
+    // once-daily administrative reference rate.
+    const fx = (pricesData && pricesData.fx && pricesData.fx.price) || (state.portfolio.stocksCache.fx || null);
 
     state.portfolio.stocksCache = { date: today, fx, prices };
     saveData();
@@ -1142,9 +1139,9 @@ function renderPortfolio() {
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
       <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;">Refresh now</button>
-      <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use as this month's Stocks value</button>
+      <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use after-fee value as this month's Stocks value</button>
     </div>
-    <div style="font-size:11.5px;color:var(--text-dim);margin-top:8px;">"Use as this month's Stocks value" uses the market value (before fee) — type the after-fee figure in manually instead if you'd rather track net proceeds.</div>
+    <div style="font-size:11.5px;color:var(--text-dim);margin-top:8px;">This uses the "after fee" figure (net of your broker's conversion cost) — edit the value directly if you'd rather track raw market value instead.</div>
     ${lastStockFetchError ? `<div style="margin-top:10px;font-size:12px;color:var(--warn);">⚠ ${escapeHtml(lastStockFetchError)}</div>` : ''}
   `;
   mainContainer.appendChild(autoCard);
@@ -1222,7 +1219,7 @@ function renderPortfolio() {
   autoCard.querySelector('#applyStocksBtn').addEventListener('click', () => {
     syncAutoStocksInputsFromDom();
     state.portfolio.monthlyValues[key] = state.portfolio.monthlyValues[key] || {};
-    state.portfolio.monthlyValues[key].stocks = Math.round(stockHoldingsTotals().totalSek);
+    state.portfolio.monthlyValues[key].stocks = Math.round(stockHoldingsTotals().totalSekAfterFee);
     saveData();
     render();
   });
