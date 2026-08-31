@@ -1129,11 +1129,11 @@ function renderPortfolio() {
     <div class="field-row" style="margin-top:12px;">
       <div class="field">
         <label>USD → SEK rate</label>
-        <input type="number" inputmode="decimal" min="0" step="0.0001" id="usdSekInput" placeholder="e.g. 9.60" value="${state.portfolio.usdSekRate}">
+        <input type="text" inputmode="none" readonly class="calc-trigger" placeholder="e.g. 9.60" id="usdSekInput" value="${state.portfolio.usdSekRate}">
       </div>
       <div class="field">
         <label>Broker fee (%)</label>
-        <input type="number" inputmode="decimal" min="0" max="100" step="0.01" id="brokerFeeInput" placeholder="0.25" value="${state.portfolio.brokerFeePct}">
+        <input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0.25" id="brokerFeeInput" value="${state.portfolio.brokerFeePct}">
       </div>
     </div>
     <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Type in the exact rate your broker shows — automatic exchange-rate sources kept giving numbers that didn't match. Broker fee is what they charge to actually convert on sale; it only affects Sales value below.</div>
@@ -1195,17 +1195,21 @@ function renderPortfolio() {
     saveData();
   }
 
-  autoCard.querySelector('#usdSekInput').addEventListener('input', (e) => {
-    state.portfolio.usdSekRate = e.target.value;
-    saveData();
+  autoCard.querySelector('#usdSekInput').addEventListener('click', () => {
+    openNumberCalculator('USD → SEK rate', '', state.portfolio.usdSekRate, (val) => {
+      state.portfolio.usdSekRate = val;
+      saveData();
+      render();
+    });
   });
-  autoCard.querySelector('#usdSekInput').addEventListener('change', () => { render(); });
-  autoCard.querySelector('#brokerFeeInput').addEventListener('input', (e) => {
-    const v = parseFloat(e.target.value);
-    state.portfolio.brokerFeePct = isNaN(v) ? 0.25 : v;
-    saveData();
+  autoCard.querySelector('#brokerFeeInput').addEventListener('click', () => {
+    openNumberCalculator('Broker conversion fee', '%', state.portfolio.brokerFeePct, (val) => {
+      const v = parseFloat(val);
+      state.portfolio.brokerFeePct = isNaN(v) ? 0.25 : v;
+      saveData();
+      render();
+    });
   });
-  autoCard.querySelector('#brokerFeeInput').addEventListener('change', () => { render(); });
   autoCard.querySelector('#addHoldingBtn').addEventListener('click', () => {
     syncAutoStocksInputsFromDom();
     state.portfolio.stockHoldings.push({ ticker: '', shares: '' });

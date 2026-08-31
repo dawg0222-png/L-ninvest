@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saferoad-lon-v18';
+const CACHE_NAME = 'saferoad-lon-v19';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
