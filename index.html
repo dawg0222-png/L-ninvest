@@ -500,6 +500,7 @@ if (!state.portfolio.stockHoldings) state.portfolio.stockHoldings = [];
 if (!state.portfolio.stocksCache) state.portfolio.stocksCache = { date: '', fx: null, prices: {} };
 if (state.portfolio.brokerFeePct == null) state.portfolio.brokerFeePct = 0.25;
 if (state.portfolio.usdSekRate == null) state.portfolio.usdSekRate = '';
+if (state.portfolio.useStocksSalesValueInTargets == null) state.portfolio.useStocksSalesValueInTargets = false;
 if (!state.activeTab) state.activeTab = 'lon';
 let openDayIndex = null;
 
@@ -1000,6 +1001,12 @@ function renderPortfolio() {
   ensurePortfolioMonthValues(key);
 
   const stocksVal = Number(portfolioValueFor('stocks', key)) || 0;
+  // Computed early (before the summary calc below) so the after-fee Sales
+  // value can be swapped in for stocksVal in the "if target is met" figures
+  // when the toggle is on, and reused further down for the Stocks card and
+  // the auto-priced holdings card.
+  const { totalUsd, fx, totalSek, feePct, totalSekAfterFee } = stockHoldingsTotals();
+  const stocksValForTargets = state.portfolio.useStocksSalesValueInTargets ? totalSekAfterFee : stocksVal;
 
   let grandTotal = stocksVal;
   let grandTotalAtTarget = stocksVal;
@@ -1023,7 +1030,7 @@ function renderPortfolio() {
   });
 
   const cashTotal = rows.filter(r => CASH_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.total, 0);
-  const stocksIndexTotal = rows.filter(r => STOCK_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.total, 0) + stocksVal;
+  const stocksIndexTotal = rows.filter(r => STOCK_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.total, 0) + stocksValForTargets;
   const resaRow = rows.find(r => r.cat.key === 'resa') || { total: 0, totalAtTarget: 0 };
   const resaTotal = resaRow.total;
   const netExclResa = grandTotal - resaTotal;
@@ -1035,7 +1042,7 @@ function renderPortfolio() {
   const aptToIndex = Number(apt.toIndex) || 0;
 
   const cashAtTarget = rows.filter(r => CASH_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.totalAtTarget, 0) + aptToCash;
-  const stocksIndexAtTarget = rows.filter(r => STOCK_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.totalAtTarget, 0) + stocksVal + aptToIndex;
+  const stocksIndexAtTarget = rows.filter(r => STOCK_KEYS.includes(r.cat.key)).reduce((s, r) => s + r.totalAtTarget, 0) + stocksValForTargets + aptToIndex;
   const totalAtTargetExclResa = (grandTotalAtTarget - resaRow.totalAtTarget) + aptToCash + aptToIndex;
 
   // How much more still needs to be invested (contributed) to reach every
@@ -1107,18 +1114,29 @@ function renderPortfolio() {
     <div class="cat-fields single">
       <div class="field"><label>Value</label><input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0" data-role="stocks" value="${portfolioValueFor('stocks', key)}"></div>
     </div>
+    <div class="cat-fields single" style="margin-top:10px;">
+      <div class="field"><label>Sales value (after ${feePct}% fee)</label><div class="cat-total" style="color:var(--warn);">${fmtSEK(totalSekAfterFee)}</div></div>
+    </div>
+    <label style="display:flex;align-items:flex-start;gap:10px;margin-top:12px;font-size:12.5px;color:var(--text-dim);cursor:pointer;">
+      <input type="checkbox" id="useSalesValueToggle" style="margin-top:2px;" ${state.portfolio.useStocksSalesValueInTargets ? 'checked' : ''}>
+      <span>Use Sales value instead of Value in "Stocks/Index funds" and "Stocks value if target is met" below</span>
+    </label>
   `;
   mainContainer.appendChild(stocksCard);
-
-  /* ---------- Auto-priced stock holdings ---------- */
-  const holdings = state.portfolio.stockHoldings || [];
-  const cache = state.portfolio.stocksCache || { date: '', fx: null, prices: {} };
-  const { totalUsd, fx, totalSek, feePct, totalSekAfterFee } = stockHoldingsTotals();
+  stocksCard.querySelector('#useSalesValueToggle').addEventListener('change', (e) => {
+    state.portfolio.useStocksSalesValueInTargets = e.target.checked;
+    saveData();
+    render();
+  });
 
   const autoTitle = document.createElement('div');
   autoTitle.className = 'section-title';
   autoTitle.textContent = 'Stocks portfolio (auto-priced)';
   mainContainer.appendChild(autoTitle);
+
+  /* ---------- Auto-priced stock holdings ---------- */
+  const holdings = state.portfolio.stockHoldings || [];
+  const cache = state.portfolio.stocksCache || { date: '', fx: null, prices: {} };
 
   const autoCard = document.createElement('div');
   autoCard.className = 'cat-card';
@@ -1136,11 +1154,10 @@ function renderPortfolio() {
         <input type="text" inputmode="none" readonly class="calc-trigger" placeholder="0.25" id="brokerFeeInput" value="${state.portfolio.brokerFeePct}">
       </div>
     </div>
-    <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Type in the exact rate your broker shows — automatic exchange-rate sources kept giving numbers that didn't match. Broker fee is what they charge to actually convert on sale; it only affects Sales value below.</div>
+    <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Type in the exact rate your broker shows — automatic exchange-rate sources kept giving numbers that didn't match. Broker fee is what they charge to actually convert on sale; it feeds the Sales value shown on the Stocks card above.</div>
     <div class="day-compute" style="margin-top:14px;">
       <div>USD total <b>$${totalUsd.toFixed(2)}</b></div>
       <div>Value (market, before fee) <b>${fmtSEK(totalSek)}</b></div>
-      <div>Sales value (after ${feePct}% fee) <b style="color:var(--warn);">${fmtSEK(totalSekAfterFee)}</b></div>
       <div>Priced <b>${cache.date || 'never'}</b></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
@@ -1288,7 +1305,7 @@ function renderPortfolio() {
 
   const note = document.createElement('div');
   note.className = 'rates-note';
-  note.innerHTML = `<b>Value</b> for LYSA, Avanza Global Index, Sparkonto and Stocks is entered fresh each month — the actual balance at the start of that month — and can be adjusted per month; Resa and Buffert keep one shared value. It also updates automatically whenever you tap <b>Add now</b> in the Investments tab. <b>Added in</b> shows the month you last tapped Add now for that category. <b>Total</b> is just Value now — no separate projection on top. <b>Stocks</b> has no Add now — it's Value only, auto-priced. <b>Sale of apartment</b> — Value is just a record of the proceeds; only <b>To Index funds</b> and <b>To Cash</b> actually count, and only toward the "if target is met" figures. "<b>...if target is met</b>" projects a category at its Investments target (or its all-time Add now total so far if that's already higher). <b>Cash</b> = Sparkonto + Buffert. <b>Stocks/Index funds</b> = LYSA + Avanza Global + Stocks. <b>Net value (excl. Resa)</b> is Total value minus Resa. The top number is the total value if all targets are met, with Resa excluded.`;
+  note.innerHTML = `<b>Value</b> for LYSA, Avanza Global Index, Sparkonto and Stocks is entered fresh each month — the actual balance at the start of that month — and can be adjusted per month; Resa and Buffert keep one shared value. It also updates automatically whenever you tap <b>Add now</b> in the Investments tab. <b>Added in</b> shows the month you last tapped Add now for that category. <b>Total</b> is just Value now — no separate projection on top. <b>Stocks</b> has no Add now — it's Value only, auto-priced; <b>Sales value</b> next to it is the after-fee figure from the auto-priced holdings card below. The checkbox under Stocks swaps Sales value in for Value in <b>Stocks/Index funds</b> and <b>Stocks value if target is met</b> only — everything else (the top total, Net value) always uses Value. <b>Sale of apartment</b> — Value is just a record of the proceeds; only <b>To Index funds</b> and <b>To Cash</b> actually count, and only toward the "if target is met" figures. "<b>...if target is met</b>" projects a category at its Investments target (or its all-time Add now total so far if that's already higher). <b>Cash</b> = Sparkonto + Buffert. <b>Stocks/Index funds</b> = LYSA + Avanza Global + Stocks. <b>Net value (excl. Resa)</b> is Total value minus Resa. The top number is the total value if all targets are met, with Resa excluded.`;
   mainContainer.appendChild(note);
 
   mainContainer.querySelectorAll('[data-role="aptValue"]').forEach(inp => {
