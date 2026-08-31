@@ -499,6 +499,7 @@ if (!state.portfolio.monthlyValues) state.portfolio.monthlyValues = {};
 if (!state.portfolio.stockHoldings) state.portfolio.stockHoldings = [];
 if (!state.portfolio.stocksCache) state.portfolio.stocksCache = { date: '', fx: null, prices: {} };
 if (state.portfolio.brokerFeePct == null) state.portfolio.brokerFeePct = 0.25;
+if (state.portfolio.usdSekRate == null) state.portfolio.usdSekRate = '';
 if (!state.activeTab) state.activeTab = 'lon';
 let openDayIndex = null;
 
@@ -598,13 +599,10 @@ async function refreshStockPricesIfNeeded(force) {
       throw new Error(`No prices cached yet for: ${missing.join(', ')} — check the ticker symbol, or it may just need tonight's scheduled update to run once.`);
     }
 
-    // USD->SEK now comes bundled in the same /prices response — a real
-    // market rate (Finnhub's OANDA:USD_SEK forex pair), fetched and cached
-    // by the Worker the same way as the stock prices, not the ECB's
-    // once-daily administrative reference rate.
-    const fx = (pricesData && pricesData.fx && pricesData.fx.price) || (state.portfolio.stocksCache.fx || null);
-
-    state.portfolio.stocksCache = { date: today, fx, prices };
+    // USD->SEK is entered manually (state.portfolio.usdSekRate) — automatic
+    // sources kept disagreeing with your actual broker rate, so it's just
+    // typed in directly instead of fetched here.
+    state.portfolio.stocksCache = { date: today, prices };
     saveData();
     if (missing.length > 0) {
       lastStockFetchError = `Not priced yet: ${missing.join(', ')} — will populate after tonight's scheduled update.`;
@@ -617,14 +615,17 @@ async function refreshStockPricesIfNeeded(force) {
 }
 
 // Sums shares × cached price across all holdings, converted to SEK using
-// the cached FX rate. Also applies the broker's currency-conversion fee
-// (state.portfolio.brokerFeePct) to give a realistic "if I sold and
-// withdrew today" figure alongside the raw market value. Uses whatever's
-// cached — doesn't fetch.
+// a manually-entered USD->SEK rate (state.portfolio.usdSekRate) — automatic
+// FX sources kept giving numbers that didn't match your actual broker rate
+// (ECB's daily snapshot, then an unavailable forex quote), so this is just
+// typed in directly from whatever your broker shows. Also applies the
+// broker's currency-conversion fee (state.portfolio.brokerFeePct) to give a
+// realistic "if I sold and withdrew today" Sales value alongside the raw
+// market value. Uses whatever's cached for prices — doesn't fetch.
 function stockHoldingsTotals() {
   const cache = state.portfolio.stocksCache || {};
   const prices = cache.prices || {};
-  const fx = Number(cache.fx) || 0;
+  const fx = Number(state.portfolio.usdSekRate) || 0;
   let totalUsd = 0;
   (state.portfolio.stockHoldings || []).forEach(h => {
     const t = (h.ticker || '').trim().toUpperCase();
@@ -1125,23 +1126,28 @@ function renderPortfolio() {
     <div style="font-size:11.5px;color:var(--text-dim);margin-bottom:12px;">Prices are fetched once a night by your Cloudflare Worker (previous close only — never after-hours) and cached, so this just reads that cache. Non-US tickers need the exchange suffix, e.g. ERIC-B.ST.</div>
     <div id="holdingsList"></div>
     <button type="button" class="clear-day" id="addHoldingBtn" style="color:var(--text);border-color:var(--border);margin-top:2px;">+ Add holding</button>
-    <div class="field" style="margin-top:12px;">
-      <label>Broker currency conversion fee (%)</label>
-      <input type="number" inputmode="decimal" min="0" max="100" step="0.01" id="brokerFeeInput" placeholder="0.25" value="${state.portfolio.brokerFeePct}">
-      <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">What your broker actually charges to convert USD→SEK on sale — not a market rate, just their fee. Affects the "after fee" figure below only.</div>
+    <div class="field-row" style="margin-top:12px;">
+      <div class="field">
+        <label>USD → SEK rate</label>
+        <input type="number" inputmode="decimal" min="0" step="0.0001" id="usdSekInput" placeholder="e.g. 9.60" value="${state.portfolio.usdSekRate}">
+      </div>
+      <div class="field">
+        <label>Broker fee (%)</label>
+        <input type="number" inputmode="decimal" min="0" max="100" step="0.01" id="brokerFeeInput" placeholder="0.25" value="${state.portfolio.brokerFeePct}">
+      </div>
     </div>
+    <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px;">Type in the exact rate your broker shows — automatic exchange-rate sources kept giving numbers that didn't match. Broker fee is what they charge to actually convert on sale; it only affects Sales value below.</div>
     <div class="day-compute" style="margin-top:14px;">
       <div>USD total <b>$${totalUsd.toFixed(2)}</b></div>
-      <div>USD→SEK <b>${fx ? fx.toFixed(3) : '–'}</b></div>
-      <div>Total (market value) <b>${fmtSEK(totalSek)}</b></div>
-      <div>Total (after ${feePct}% fee) <b style="color:var(--warn);">${fmtSEK(totalSekAfterFee)}</b></div>
+      <div>Value (market, before fee) <b>${fmtSEK(totalSek)}</b></div>
+      <div>Sales value (after ${feePct}% fee) <b style="color:var(--warn);">${fmtSEK(totalSekAfterFee)}</b></div>
       <div>Priced <b>${cache.date || 'never'}</b></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
       <button type="button" class="btn btn-secondary" id="refreshPricesBtn" style="flex:1;">Refresh now</button>
-      <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use after-fee value as this month's Stocks value</button>
+      <button type="button" class="btn btn-primary" id="applyStocksBtn" style="flex:1;">Use as this month's Stocks value</button>
     </div>
-    <div style="font-size:11.5px;color:var(--text-dim);margin-top:8px;">This uses the "after fee" figure (net of your broker's conversion cost) — edit the value directly if you'd rather track raw market value instead.</div>
+    <div style="font-size:11.5px;color:var(--text-dim);margin-top:8px;">Pushes the market value (before fee) into Portfolio → Stocks.</div>
     ${lastStockFetchError ? `<div style="margin-top:10px;font-size:12px;color:var(--warn);">⚠ ${escapeHtml(lastStockFetchError)}</div>` : ''}
   `;
   mainContainer.appendChild(autoCard);
@@ -1189,6 +1195,11 @@ function renderPortfolio() {
     saveData();
   }
 
+  autoCard.querySelector('#usdSekInput').addEventListener('input', (e) => {
+    state.portfolio.usdSekRate = e.target.value;
+    saveData();
+  });
+  autoCard.querySelector('#usdSekInput').addEventListener('change', () => { render(); });
   autoCard.querySelector('#brokerFeeInput').addEventListener('input', (e) => {
     const v = parseFloat(e.target.value);
     state.portfolio.brokerFeePct = isNaN(v) ? 0.25 : v;
@@ -1219,7 +1230,7 @@ function renderPortfolio() {
   autoCard.querySelector('#applyStocksBtn').addEventListener('click', () => {
     syncAutoStocksInputsFromDom();
     state.portfolio.monthlyValues[key] = state.portfolio.monthlyValues[key] || {};
-    state.portfolio.monthlyValues[key].stocks = Math.round(stockHoldingsTotals().totalSekAfterFee);
+    state.portfolio.monthlyValues[key].stocks = Math.round(stockHoldingsTotals().totalSek);
     saveData();
     render();
   });
