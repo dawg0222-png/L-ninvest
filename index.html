@@ -1387,7 +1387,7 @@ function buildLineChartSVG(seriesArr, keys) {
   const minVal = Math.min(0, ...allVals);
 
   const W = 800, H = 380;
-  const padL = 55, padR = 16, padT = 16, padB = 40;
+  const padL = 78, padR = 16, padT = 16, padB = 52;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
@@ -1400,7 +1400,7 @@ function buildLineChartSVG(seriesArr, keys) {
     const v = minVal + (maxVal - minVal) * (g / gridCount);
     const y = yFor(v);
     gridLines += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#2c3140" stroke-width="1"/>`;
-    gridLines += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#9aa1b3">${Math.round(v / 1000)}k</text>`;
+    gridLines += `<text x="${padL - 10}" y="${y + 7}" text-anchor="end" font-size="21" fill="#c3c8d6">${Math.round(v / 1000)}k</text>`;
   }
 
   let xLabels = '';
@@ -1410,7 +1410,7 @@ function buildLineChartSVG(seriesArr, keys) {
     const step = Math.ceil(keys.length / 8);
     if (keys.length <= 8 || i % step === 0 || i === keys.length - 1) {
       const x = xFor(i);
-      xLabels += `<text x="${x}" y="${H - padB + 16}" text-anchor="middle" font-size="10" fill="#9aa1b3">${MONTH_NAMES[m - 1].slice(0, 3)} ${String(y).slice(2)}</text>`;
+      xLabels += `<text x="${x}" y="${H - padB + 26}" text-anchor="middle" font-size="19" fill="#c3c8d6">${MONTH_NAMES[m - 1].slice(0, 3)} ${String(y).slice(2)}</text>`;
     }
   });
 
@@ -1420,7 +1420,7 @@ function buildLineChartSVG(seriesArr, keys) {
     const pathD = d.points.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i)} ${yFor(v)}`).join(' ');
     lines += `<path d="${pathD}" fill="none" stroke="${d.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
     d.points.forEach((v, i) => {
-      dots += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="3" fill="${d.color}"/>`;
+      dots += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="4" fill="${d.color}"/>`;
     });
   });
 
